@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using RiotSharp;
 using RiotSharp.LeagueEndpoint;
+using RiotSharp.MatchEndpoint;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -61,6 +62,44 @@ namespace ProBuilds
         }
     }
 
+    public static class MatchDirectory
+    {
+        static string MatchRoot = "matches";
+
+        static MatchDirectory()
+        {
+            EnsureDirectories();
+        }
+
+        public static void EnsureDirectories()
+        {
+            if (!Directory.Exists(MatchRoot))
+                Directory.CreateDirectory(MatchRoot);
+        }
+
+        private static string GetMatchPath(string matchVersion, long matchId)
+        {
+            RiotVersion version = new RiotVersion(matchVersion);
+            string path = Path.Combine(MatchRoot, version.Major, version.Minor, version.Patch, matchId + ".json.gz");
+
+            string dirPath = Path.GetDirectoryName(path);
+            if (!Directory.Exists(dirPath))
+                Directory.CreateDirectory(dirPath);
+
+            return path;
+        }
+
+        public static string GetMatchPath(MatchDetail match)
+        {
+            return GetMatchPath(match.MatchVersion, match.MatchId);
+        }
+
+        public static string GetMatchPath(MatchSummary match)
+        {
+            return GetMatchPath(match.MatchVersion, match.MatchId);
+        }
+    }
+
     public class PlayerDirectory
     {
         static string PathRoot = "stats";
@@ -104,6 +143,7 @@ namespace ProBuilds
             var champions = staticApi.GetChampions(region);
             var items = staticApi.GetItems(region);
             var version = staticApi.GetVersions(region);
+            var realm = staticApi.GetRealm(region);
 
             // Get challenger list
             RiotApi api = RiotApi.GetInstance(apiKey);
@@ -144,12 +184,16 @@ namespace ProBuilds
             // Get all matches for each player
             foreach (var player in challenger.Entries)
             {
-                var matches = api.GetMatchHistory(region, long.Parse(challenger.Entries[0].PlayerOrTeamId),
+                var matches = api.GetMatchHistory(region, long.Parse(player.PlayerOrTeamId),
                     rankedQueues: queues);
 
                 ConsoleColor consoleColorDefault = Console.ForegroundColor;
-                matches.ForEach(m =>
+                var tasks = matches.AsParallel().Select(async m =>
                 {
+                    string matchPath = MatchDirectory.GetMatchPath(m);
+                    if (File.Exists(matchPath))
+                        return;
+
                     RiotVersion matchVersion = new RiotVersion(m.MatchVersion);
 
                     if (itemVersion.IsSamePatch(matchVersion))
@@ -160,13 +204,20 @@ namespace ProBuilds
                     Console.WriteLine(m.MatchId + ": " + m.MatchVersion);
 
                     Console.ForegroundColor = consoleColorDefault;
+
+                    var matchId = m.MatchId;
+                    var match = await api.GetMatchAsync(region, matchId, true); // match with full timeline data
+
+                    CompressedJson.WriteToFile(matchPath, match);
                 });
+
+                Task.WaitAll(tasks.ToArray());
 
                 var matchVersions = matches.Select(m => new RiotVersion(m.MatchVersion)).ToList();
 
                 var currentMatches = matches.Where(m => itemVersion.IsSamePatch(new RiotVersion(m.MatchVersion))).ToList();
 
-                var matchid = matches[0].MatchId;
+                //var matchid = matches[0].MatchId;
                 //var match = api.GetMatch(region, matchid, true); // match with full timeline data
                 //var events = match.Timeline.Frames.Where(f => f.Events != null).SelectMany(f => f.Events).ToList();
 
