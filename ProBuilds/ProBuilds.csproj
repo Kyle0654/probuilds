@@ -40,7 +40,14 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+<<<<<<< HEAD
     <Reference Include="System.Runtime.Serialization" />
+=======
+    <Reference Include="System.Threading.Tasks.Dataflow, Version=4.5.24.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Microsoft.Tpl.Dataflow.4.5.24\lib\portable-net45+win8+wpa81\System.Threading.Tasks.Dataflow.dll</HintPath>
+    </Reference>
+>>>>>>> origin/master
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -49,9 +56,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CompressedJson.cs" />
+<<<<<<< HEAD
     <Compile Include="ItemSetWriter.cs" />
+=======
+    <Compile Include="MatchDirectory.cs" />
+    <Compile Include="MatchPipeline.cs" />
+    <Compile Include="PlayerDirectory.cs" />
+>>>>>>> origin/master
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RiotQuerySettings.cs" />
+    <Compile Include="RiotVersion.cs" />
+    <Compile Include="StaticDataStore.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
