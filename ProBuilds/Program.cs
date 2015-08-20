@@ -52,6 +52,28 @@ namespace ProBuilds
             // Create pipeline
             MatchPipeline pipeline = new MatchPipeline(api, querySettings);
             pipeline.Process();
+
+            // Write out champion data
+            var championMatchData = pipeline.ChampionMatchData;
+            championMatchData.Select(kvp =>
+            {
+                int championId = kvp.Value.ChampionId;
+                int matchCount = kvp.Value.MatchIds.Count;
+                int winCount = kvp.Value.MatchIds.Count(m => m.Item2);
+
+                var champion = StaticDataStore.Champions.Champions.FirstOrDefault(ckvp => ckvp.Value.Id == championId).Value;
+
+                return new
+                {
+                    ChampionId = championId,
+                    MatchCount = matchCount,
+                    WinCount = winCount,
+                    ChampionName = champion.Name
+                };
+            }).OrderBy(c => c.ChampionName).ToList().ForEach(c =>
+            {
+                Console.WriteLine("{0} - Matches: {1}, Wins: {2}", c.ChampionName, c.MatchCount, c.WinCount);
+            });
         }
     }
 }

@@ -13,17 +13,43 @@ using System.Threading.Tasks.Dataflow;
 
 namespace ProBuilds
 {
+    public class ChampionMatchData
+    {
+        public int ChampionId;
+        public ConcurrentBag<Tuple<long, bool>> MatchIds = new ConcurrentBag<Tuple<long, bool>>();
+
+        public ChampionMatchData(int championId)
+        {
+            ChampionId = championId;
+        }
+
+        public void AddMatch(long matchId, bool isWinner)
+        {
+            MatchIds.Add(new Tuple<long, bool>(matchId, isWinner));
+        }
+    }
+
     public class MatchPipeline
     {
         private BufferBlock<LeagueEntry> PlayerBufferBlock;
         private TransformManyBlock<LeagueEntry, MatchSummary> PlayerToMatchesBlock;
-        private ActionBlock<MatchSummary> ConsumeMatchBlock;
+        private TransformBlock<MatchSummary, MatchDetail> ConsumeMatchBlock;
+        private ActionBlock<MatchDetail> ConsumeMatchDetailBlock;
+        private IDataflowBlock LastBlock;
 
         RiotApi api;
         RiotQuerySettings querySettings;
         List<Queue> queryQueues = new List<Queue>();
 
-        long testLimit = 100;
+        ConcurrentDictionary<long, byte> processingMatches = new ConcurrentDictionary<long, byte>();
+        ConcurrentDictionary<int, ChampionMatchData> championMatchData = new ConcurrentDictionary<int, ChampionMatchData>();
+
+        /// <summary>
+        /// Data about champions from processed matches.
+        /// </summary>
+        public ConcurrentDictionary<int, ChampionMatchData> ChampionMatchData { get { return championMatchData; } }
+
+        long testLimit = 500;
         long testCount = 0;
 
         public MatchPipeline(RiotApi riotApi, RiotQuerySettings querySettings)
@@ -38,17 +64,26 @@ namespace ProBuilds
             PlayerToMatchesBlock = new TransformManyBlock<LeagueEntry, MatchSummary>(
                 async player => await ConsumePlayerAsync(player),
                 new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 2 });
-            ConsumeMatchBlock = new ActionBlock<MatchSummary>(
+            ConsumeMatchBlock = new TransformBlock<MatchSummary, MatchDetail>(
                 async match => await ConsumeMatch(match),
                 new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 5 });
+            ConsumeMatchDetailBlock = new ActionBlock<MatchDetail>(
+                async match => await ConsumeMatchDetail(match),
+                new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 8 });
 
             // Link blocks
             PlayerBufferBlock.LinkTo(PlayerToMatchesBlock);
             PlayerToMatchesBlock.LinkTo(ConsumeMatchBlock);
+            ConsumeMatchBlock.LinkTo(ConsumeMatchDetailBlock, match => match != null);
+            ConsumeMatchBlock.LinkTo(DataflowBlock.NullTarget<MatchDetail>());
 
             // Hook completion continuations
             PlayerBufferBlock.Completion.ContinueWith(t => PlayerToMatchesBlock.Complete());
             PlayerToMatchesBlock.Completion.ContinueWith(t => ConsumeMatchBlock.Complete());
+            ConsumeMatchBlock.Completion.ContinueWith(t => ConsumeMatchDetailBlock.Complete());
+
+            // Mark the last block in the chain to make iterating easier
+            LastBlock = ConsumeMatchDetailBlock;
         }
 
         /// <summary>
@@ -61,7 +96,7 @@ namespace ProBuilds
 
             // Wait for completion
             PlayerBufferBlock.Complete();
-            ConsumeMatchBlock.Completion.Wait();
+            LastBlock.Completion.Wait();
         }
 
         /// <summary>
@@ -101,21 +136,29 @@ namespace ProBuilds
             return matches;
         }
 
-        ConcurrentDictionary<long, byte> processingMatches = new ConcurrentDictionary<long, byte>();
+        private bool TryLockMatch(long matchId)
+        {
+            return processingMatches.TryAdd(matchId, 1);
+        }
+
+        private void TryUnlockMatch(long matchId)
+        {
+            byte dummyVal;
+            processingMatches.TryRemove(matchId, out dummyVal);
+        }
 
         /// <summary>
         /// Process a match.
         /// </summary>
-        private async Task ConsumeMatch(MatchSummary match)
+        private async Task<MatchDetail> ConsumeMatch(MatchSummary match)
         {
             long matchId = match.MatchId;
 
             // Try to mark the match as being processed
-            byte dummyVal = 1;
-            if (!processingMatches.TryAdd(matchId, dummyVal))
+            if (!TryLockMatch(matchId))
             {
                 // Another thread has already started processing this match, we don't need to do anything
-                return;
+                return null;
             }
 
             // Get the disk path and version of the match
@@ -125,24 +168,32 @@ namespace ProBuilds
             // Don't re-download if:
             // the match version is older than the current realm version, or
             // the match exists on disk already
-            if (!StaticDataStore.Version.IsSamePatch(matchVersion) ||
-                File.Exists(matchPath))
+            if (!StaticDataStore.Version.IsSamePatch(matchVersion))
             {
-                processingMatches.TryRemove(matchId, out dummyVal);
-                return;
+                TryUnlockMatch(matchId);
+                return null;
+            }
+
+            if (File.Exists(matchPath))
+            {
+                TryUnlockMatch(matchId);
+                MatchDetail loadedMatchData = CompressedJson.ReadFromFile<MatchDetail>(matchPath);
+                return loadedMatchData;
             }
 
             // <TEST> download limiting
             long count = Interlocked.Read(ref testCount);
             Interlocked.Increment(ref testCount);
             if (count >= testLimit)
-                return;
+                return null;
             // </TEST>
+
+            MatchDetail matchData = null;
 
             try
             {
                 // Get the match with full timeline data
-                var matchData = await api.GetMatchAsync(querySettings.Region, matchId, true);
+                matchData = await api.GetMatchAsync(querySettings.Region, matchId, true);
                 if (matchData == null)
                     throw new RiotSharpException("Null match: " + matchId);
 
@@ -162,7 +213,42 @@ namespace ProBuilds
             }
 
             // Remove the match from current downloads
-            processingMatches.TryRemove(matchId, out dummyVal);
+            TryUnlockMatch(matchId);
+
+            return matchData;
+        }
+
+        private ChampionMatchData GetOrCreateMatchData(int championId)
+        {
+            ChampionMatchData championMatches;
+            if (!championMatchData.TryGetValue(championId, out championMatches))
+            {
+                championMatches = new ChampionMatchData(championId);
+                if (!championMatchData.TryAdd(championId, championMatches))
+                {
+                    // Two threads tried to add a champion match data at the same time
+                    championMatchData.TryGetValue(championId, out championMatches);
+                }
+            }
+            return championMatches;
+        }
+
+        /// <summary>
+        /// Extracts data from match details.
+        /// </summary>
+        private async Task ConsumeMatchDetail(MatchDetail match)
+        {
+            long matchId = match.MatchId;
+            Console.WriteLine("Processing match " + matchId);
+
+            match.Participants.ForEach(participant =>
+            {
+                int championId = participant.ChampionId;
+                bool isWinner = match.Teams.FirstOrDefault(t => participant.TeamId == t.TeamId).Winner;
+
+                ChampionMatchData championMatches = GetOrCreateMatchData(championId);
+                championMatches.AddMatch(matchId, isWinner);
+            });
         }
     }
 }

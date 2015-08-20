@@ -31,6 +31,27 @@ namespace ProBuilds
             }
         }
 
+        /// <summary>
+        /// Loads an object from a compressed json file.
+        /// </summary>
+        /// <param name="filename"></param>
+        /// <returns></returns>
+        public static T ReadFromFile<T>(string filename)
+        {
+            using (FileStream file = File.OpenRead(filename))
+            {
+                using (GZipStream stream = new GZipStream(file, CompressionMode.Decompress))
+                {
+                    using (StreamReader reader = new StreamReader(stream))
+                    {
+                        string json = reader.ReadToEnd();
+                        T obj = JsonConvert.DeserializeObject<T>(json);
+                        return obj;
+                    }
+                }
+            }
+        }
+
         private static void EnsureDirectory(string path)
         {
             string dirPath = Path.GetDirectoryName(path);
