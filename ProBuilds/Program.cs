@@ -50,11 +50,12 @@ namespace ProBuilds
             StaticDataStore.Initialize(staticApi, querySettings);
 
             // Create pipeline
-            MatchPipeline pipeline = new MatchPipeline(api, querySettings);
+            ChampionWinCounter winCounter = new ChampionWinCounter();
+            MatchPipeline pipeline = new MatchPipeline(api, querySettings, winCounter);
             pipeline.Process();
 
             // Write out champion data
-            var championMatchData = pipeline.ChampionMatchData;
+            var championMatchData = winCounter.ChampionMatchData;
             championMatchData.Select(kvp =>
             {
                 int championId = kvp.Value.ChampionId;
@@ -74,6 +75,11 @@ namespace ProBuilds
             {
                 Console.WriteLine("{0} - Matches: {1}, Wins: {2}", c.ChampionName, c.MatchCount, c.WinCount);
             });
+
+            // Complete
+            Console.WriteLine();
+            Console.WriteLine("Complete, press any key to exit");
+            Console.ReadKey();
         }
     }
 }

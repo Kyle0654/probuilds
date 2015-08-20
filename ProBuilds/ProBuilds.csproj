@@ -52,7 +52,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ChampionWinCounter.cs" />
     <Compile Include="CompressedJson.cs" />
+    <Compile Include="IMatchDetailProcessor.cs" />
     <Compile Include="ItemSetWriter.cs" />
     <Compile Include="MatchDirectory.cs" />
     <Compile Include="MatchPipeline.cs" />

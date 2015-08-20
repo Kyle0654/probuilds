@@ -13,22 +13,6 @@ using System.Threading.Tasks.Dataflow;
 
 namespace ProBuilds
 {
-    public class ChampionMatchData
-    {
-        public int ChampionId;
-        public ConcurrentBag<Tuple<long, bool>> MatchIds = new ConcurrentBag<Tuple<long, bool>>();
-
-        public ChampionMatchData(int championId)
-        {
-            ChampionId = championId;
-        }
-
-        public void AddMatch(long matchId, bool isWinner)
-        {
-            MatchIds.Add(new Tuple<long, bool>(matchId, isWinner));
-        }
-    }
-
     public class MatchPipeline
     {
         private BufferBlock<LeagueEntry> PlayerBufferBlock;
@@ -37,25 +21,22 @@ namespace ProBuilds
         private ActionBlock<MatchDetail> ConsumeMatchDetailBlock;
         private IDataflowBlock LastBlock;
 
-        RiotApi api;
-        RiotQuerySettings querySettings;
-        List<Queue> queryQueues = new List<Queue>();
+        private RiotApi api;
+        private RiotQuerySettings querySettings;
+        private List<Queue> queryQueues = new List<Queue>();
 
-        ConcurrentDictionary<long, byte> processingMatches = new ConcurrentDictionary<long, byte>();
-        ConcurrentDictionary<int, ChampionMatchData> championMatchData = new ConcurrentDictionary<int, ChampionMatchData>();
+        private ConcurrentDictionary<long, byte> processingMatches = new ConcurrentDictionary<long, byte>();
 
-        /// <summary>
-        /// Data about champions from processed matches.
-        /// </summary>
-        public ConcurrentDictionary<int, ChampionMatchData> ChampionMatchData { get { return championMatchData; } }
+        private IMatchDetailProcessor matchDetailProcessor;
 
-        long testLimit = 500;
-        long testCount = 0;
+        private long testLimit = 500;
+        private long testCount = 0;
 
-        public MatchPipeline(RiotApi riotApi, RiotQuerySettings querySettings)
+        public MatchPipeline(RiotApi riotApi, RiotQuerySettings querySettings, IMatchDetailProcessor matchDetailProcessor)
         {
             api = riotApi;
             this.querySettings = querySettings;
+            this.matchDetailProcessor = matchDetailProcessor;
 
             queryQueues.Add(querySettings.Queue);
 
@@ -68,8 +49,8 @@ namespace ProBuilds
                 async match => await ConsumeMatch(match),
                 new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 5 });
             ConsumeMatchDetailBlock = new ActionBlock<MatchDetail>(
-                async match => await ConsumeMatchDetail(match),
-                new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 8 });
+                async match => await matchDetailProcessor.ConsumeMatchDetail(match),
+                new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = matchDetailProcessor.MaxDegreeOfParallelism });
 
             // Link blocks
             PlayerBufferBlock.LinkTo(PlayerToMatchesBlock);
@@ -216,39 +197,6 @@ namespace ProBuilds
             TryUnlockMatch(matchId);
 
             return matchData;
-        }
-
-        private ChampionMatchData GetOrCreateMatchData(int championId)
-        {
-            ChampionMatchData championMatches;
-            if (!championMatchData.TryGetValue(championId, out championMatches))
-            {
-                championMatches = new ChampionMatchData(championId);
-                if (!championMatchData.TryAdd(championId, championMatches))
-                {
-                    // Two threads tried to add a champion match data at the same time
-                    championMatchData.TryGetValue(championId, out championMatches);
-                }
-            }
-            return championMatches;
-        }
-
-        /// <summary>
-        /// Extracts data from match details.
-        /// </summary>
-        private async Task ConsumeMatchDetail(MatchDetail match)
-        {
-            long matchId = match.MatchId;
-            Console.WriteLine("Processing match " + matchId);
-
-            match.Participants.ForEach(participant =>
-            {
-                int championId = participant.ChampionId;
-                bool isWinner = match.Teams.FirstOrDefault(t => participant.TeamId == t.TeamId).Winner;
-
-                ChampionMatchData championMatches = GetOrCreateMatchData(championId);
-                championMatches.AddMatch(matchId, isWinner);
-            });
         }
     }
 }
