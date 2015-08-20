@@ -13,24 +13,38 @@ using System.Threading.Tasks.Dataflow;
 
 namespace ProBuilds
 {
+    public class TestSynchronizer
+    {
+        public long Limit = 500; // Max matches stored on disk
+        public long Count = 0;
+    }
+
+    /// <summary>
+    /// Pipeline to query for and process matches.
+    /// </summary>
     public class MatchPipeline
     {
-        private BufferBlock<LeagueEntry> PlayerBufferBlock;
-        private TransformManyBlock<LeagueEntry, MatchSummary> PlayerToMatchesBlock;
+        // Data flow blocks
+        private BufferBlock<MatchDetail> MatchFileBufferBlock;
         private TransformBlock<MatchSummary, MatchDetail> ConsumeMatchBlock;
         private ActionBlock<MatchDetail> ConsumeMatchDetailBlock;
         private IDataflowBlock LastBlock;
 
+        // Processors (contain data flow blocks, along with some state)
+        private PlayerMatchProducer playerMatchProducer;
+        private IMatchDetailProcessor matchDetailProcessor;
+
+        // Data for queries
         private RiotApi api;
         private RiotQuerySettings querySettings;
         private List<Queue> queryQueues = new List<Queue>();
 
+        // Match concurrency (only download a match once)
         private ConcurrentDictionary<long, byte> processingMatches = new ConcurrentDictionary<long, byte>();
 
-        private IMatchDetailProcessor matchDetailProcessor;
-
-        private long testLimit = 500;
-        private long testCount = 0;
+        // <TEST> test to limit the number of downloads
+        private TestSynchronizer testSynchronizer = new TestSynchronizer();
+        // </TEST>
 
         public MatchPipeline(RiotApi riotApi, RiotQuerySettings querySettings, IMatchDetailProcessor matchDetailProcessor)
         {
@@ -40,28 +54,35 @@ namespace ProBuilds
 
             queryQueues.Add(querySettings.Queue);
 
+            // Create match producer
+            playerMatchProducer = new PlayerMatchProducer(api, querySettings, queryQueues, testSynchronizer);
+
             // Create blocks
-            PlayerBufferBlock = new BufferBlock<LeagueEntry>();
-            PlayerToMatchesBlock = new TransformManyBlock<LeagueEntry, MatchSummary>(
-                async player => await ConsumePlayerAsync(player),
-                new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 2 });
+            MatchFileBufferBlock = new BufferBlock<MatchDetail>();
             ConsumeMatchBlock = new TransformBlock<MatchSummary, MatchDetail>(
                 async match => await ConsumeMatch(match),
                 new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 5 });
             ConsumeMatchDetailBlock = new ActionBlock<MatchDetail>(
                 async match => await matchDetailProcessor.ConsumeMatchDetail(match),
-                new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = matchDetailProcessor.MaxDegreeOfParallelism });
+                new ExecutionDataflowBlockOptions() {
+                    MaxDegreeOfParallelism = matchDetailProcessor.MaxDegreeOfParallelism
+                }); // TODO: figure out how to bound match detail generation to not overload memory
 
             // Link blocks
-            PlayerBufferBlock.LinkTo(PlayerToMatchesBlock);
-            PlayerToMatchesBlock.LinkTo(ConsumeMatchBlock);
+            playerMatchProducer.PlayerToMatchesBlock.LinkTo(ConsumeMatchBlock);
+            MatchFileBufferBlock.LinkTo(ConsumeMatchDetailBlock);
             ConsumeMatchBlock.LinkTo(ConsumeMatchDetailBlock, match => match != null);
             ConsumeMatchBlock.LinkTo(DataflowBlock.NullTarget<MatchDetail>());
 
             // Hook completion continuations
-            PlayerBufferBlock.Completion.ContinueWith(t => PlayerToMatchesBlock.Complete());
-            PlayerToMatchesBlock.Completion.ContinueWith(t => ConsumeMatchBlock.Complete());
-            ConsumeMatchBlock.Completion.ContinueWith(t => ConsumeMatchDetailBlock.Complete());
+            Action<Task> matchDetailGenerationCompletion = t =>
+            {
+                ConsumeMatchBlock.Complete();
+                Task.WaitAll(MatchFileBufferBlock.Completion, ConsumeMatchBlock.Completion);
+                ConsumeMatchDetailBlock.Complete();
+            };
+
+            playerMatchProducer.PlayerToMatchesBlock.Completion.ContinueWith(matchDetailGenerationCompletion);
 
             // Mark the last block in the chain to make iterating easier
             LastBlock = ConsumeMatchDetailBlock;
@@ -72,49 +93,31 @@ namespace ProBuilds
         /// </summary>
         public void Process()
         {
+            // Load all downloaded matches
+            LoadMatchFiles();
+
             // Produce all players
-            ProducePlayers();
+            playerMatchProducer.Begin();
 
             // Wait for completion
-            PlayerBufferBlock.Complete();
             LastBlock.Completion.Wait();
         }
 
-        /// <summary>
-        /// Produce players to process.
-        /// </summary>
-        private void ProducePlayers()
+        public void LoadMatchFiles()
         {
-            var players = api.GetChallengerLeague(querySettings.Region, querySettings.Queue);
-            players.Entries.ForEach(player => {
-                PlayerBufferBlock.Post(player);
+            var matchFiles = MatchDirectory.GetAllMatchFiles();
+
+            // Start the counter at how many files we already have
+            testSynchronizer.Count = matchFiles.Count();
+
+            // Load match files
+            matchFiles.AsParallel().WithDegreeOfParallelism(4).ForAll(filename =>
+            {
+                MatchDetail match = MatchDirectory.LoadMatch(filename);
+                MatchFileBufferBlock.Post(match);
             });
-        }
 
-        /// <summary>
-        /// Consume players and list matches per player.
-        /// </summary>
-        private async Task<IEnumerable<MatchSummary>> ConsumePlayerAsync(LeagueEntry player)
-        {
-            // <TEST> download limiting
-            long count = Interlocked.Read(ref testCount);
-            if (count >= testLimit)
-                return Enumerable.Empty<MatchSummary>();
-            // </TEST>
-
-            // Get player id
-            long playerId = long.Parse(player.PlayerOrTeamId);
-
-            // TODO: store data on player (last seen match) to limit queries
-
-            // Get player match list
-            // TODO: use the new match history api
-            var matches = await api.GetMatchHistoryAsync(querySettings.Region, playerId,
-                rankedQueues: queryQueues);
-
-            // TODO: paginate until we reach matches we've already seen, or that are too old to process
-
-            return matches;
+            MatchFileBufferBlock.Complete();
         }
 
         private bool TryLockMatch(long matchId)
@@ -146,26 +149,25 @@ namespace ProBuilds
             string matchPath = MatchDirectory.GetMatchPath(match);
             RiotVersion matchVersion = new RiotVersion(match.MatchVersion);
 
-            // Don't re-download if:
-            // the match version is older than the current realm version, or
-            // the match exists on disk already
+            // Check if the match version is older than the current realm version
             if (!StaticDataStore.Version.IsSamePatch(matchVersion))
             {
                 TryUnlockMatch(matchId);
                 return null;
             }
 
-            if (File.Exists(matchPath))
+            // Check if the match exists on disk
+            if (MatchDirectory.MatchFileExists(match))
             {
+                // Match file loading will handle this
                 TryUnlockMatch(matchId);
-                MatchDetail loadedMatchData = CompressedJson.ReadFromFile<MatchDetail>(matchPath);
-                return loadedMatchData;
+                return null;
             }
 
             // <TEST> download limiting
-            long count = Interlocked.Read(ref testCount);
-            Interlocked.Increment(ref testCount);
-            if (count >= testLimit)
+            long count = Interlocked.Read(ref testSynchronizer.Count);
+            Interlocked.Increment(ref testSynchronizer.Count);
+            if (count >= testSynchronizer.Limit)
                 return null;
             // </TEST>
 
@@ -178,7 +180,8 @@ namespace ProBuilds
                 if (matchData == null)
                     throw new RiotSharpException("Null match: " + matchId);
 
-                CompressedJson.WriteToFile(matchPath, matchData);
+                // Save it to disk
+                MatchDirectory.SaveMatch(matchData);
 
                 Console.WriteLine(count);
             }

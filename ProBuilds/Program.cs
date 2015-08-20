@@ -55,12 +55,12 @@ namespace ProBuilds
             pipeline.Process();
 
             // Write out champion data
-            var championMatchData = winCounter.ChampionMatchData;
+            var championMatchData = winCounter.ChampionMatchData.ChampionMatchData;
             championMatchData.Select(kvp =>
             {
                 int championId = kvp.Value.ChampionId;
-                int matchCount = kvp.Value.MatchIds.Count;
-                int winCount = kvp.Value.MatchIds.Count(m => m.Item2);
+                int matchCount = kvp.Value.Matches.Count;
+                int winCount = kvp.Value.Matches.Count(m => m.Item2);
 
                 var champion = StaticDataStore.Champions.Champions.FirstOrDefault(ckvp => ckvp.Value.Id == championId).Value;
 

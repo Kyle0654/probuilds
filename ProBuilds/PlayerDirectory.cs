@@ -1,4 +1,5 @@
-﻿using RiotSharp.LeagueEndpoint;
+﻿using Newtonsoft.Json;
+using RiotSharp.LeagueEndpoint;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,28 +9,74 @@ using System.Threading.Tasks;
 
 namespace ProBuilds
 {
-    // TODO: Comment
-    public class PlayerDirectory
+    /// <summary>
+    /// All data we store about players (currently pretty minimal)
+    /// </summary>
+    public class PlayerData
     {
-        static string PathRoot = "stats";
-        static string MatchPathName = "matches";
+        public string PlayerId;
+        public long LatestMatchId = -1;
 
-        public string PlayerPath { get; private set; }
-        public string MatchRoot { get; private set; }
+        public PlayerData() {}
 
-        public PlayerDirectory(LeagueEntry entry)
+        public PlayerData(string playerId)
         {
-            PlayerPath = Path.Combine(PathRoot, entry.PlayerOrTeamId.ToString());
-            MatchRoot = Path.Combine(PlayerPath, MatchPathName);
+            PlayerId = playerId;
+        }
+    }
+
+    // TODO: Comment
+    public static class PlayerDirectory
+    {
+        static string PlayerRoot = "players";
+
+        static PlayerDirectory()
+        {
+            EnsureDirectories();
         }
 
-        public void EnsureDirectories()
+        private static void EnsureDirectories()
         {
-            if (!Directory.Exists(PlayerPath))
-                Directory.CreateDirectory(PlayerPath);
+            if (!Directory.Exists(PlayerRoot))
+                Directory.CreateDirectory(PlayerRoot);
+        }
 
-            if (!Directory.Exists(MatchRoot))
-                Directory.CreateDirectory(MatchRoot);
+        private static string GetPlayerFilename(LeagueEntry entry)
+        {
+            // We store minimal information here, so no need to compress
+            return Path.Combine(PlayerRoot, entry.PlayerOrTeamId + ".json");
+        }
+
+        /// <summary>
+        /// Gets player data.
+        /// </summary>
+        public static PlayerData GetPlayerData(LeagueEntry entry)
+        {
+            string filename = GetPlayerFilename(entry);
+            if (!File.Exists(filename))
+            {
+                PlayerData data = new PlayerData(entry.PlayerOrTeamId);
+                SetPlayerData(entry, data);
+                return data;
+            }
+            else
+            {
+                string json = File.ReadAllText(filename);
+                PlayerData data = JsonConvert.DeserializeObject<PlayerData>(json);
+                return data;
+            }
+        }
+
+        /// <summary>
+        /// Stores player data.
+        /// </summary>
+        /// <param name="entry"></param>
+        /// <param name="playerData"></param>
+        public static void SetPlayerData(LeagueEntry entry, PlayerData playerData)
+        {
+            string filename = GetPlayerFilename(entry);
+            string json = JsonConvert.SerializeObject(playerData, Formatting.Indented);
+            File.WriteAllText(filename, json);
         }
     }
 }
