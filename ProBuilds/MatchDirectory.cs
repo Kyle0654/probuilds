@@ -62,6 +62,9 @@ namespace ProBuilds
         public static IEnumerable<string> GetAllMatchFiles()
         {
             string path = GetMatchDirectory(StaticDataStore.Version, false);
+            if (!Directory.Exists(path))
+                return Enumerable.Empty<string>();
+            
             return Directory.EnumerateFiles(path, "*" + MatchFileExtension, SearchOption.AllDirectories);
         }
 

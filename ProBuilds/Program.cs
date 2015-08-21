@@ -50,31 +50,46 @@ namespace ProBuilds
             StaticDataStore.Initialize(staticApi, querySettings);
 
             // Create pipeline
-            ChampionWinCounter winCounter = new ChampionWinCounter();
-            MatchPipeline pipeline = new MatchPipeline(api, querySettings, winCounter);
+            //ChampionWinCounter winCounter = new ChampionWinCounter();
+            ItemPurchaseRecorder purchaseRecorder = new ItemPurchaseRecorder();
+            MatchPipeline pipeline = new MatchPipeline(api, querySettings, purchaseRecorder);
             pipeline.Process();
 
-            // Write out champion data
-            var championMatchData = winCounter.ChampionMatchData.ChampionMatchData;
-            championMatchData.Select(kvp =>
+            // NOTE: this code is used to write out win rates
+            //// Write out champion data
+            //var championMatchData = winCounter.ChampionMatchData.ChampionMatchData;
+            //championMatchData.Select(kvp =>
+            //{
+            //    int championId = kvp.Value.ChampionId;
+            //    int matchCount = kvp.Value.Matches.Count;
+            //    int winCount = kvp.Value.Matches.Count(m => m.Item2);
+
+            //    var champion = StaticDataStore.Champions.Champions.FirstOrDefault(ckvp => ckvp.Value.Id == championId).Value;
+
+            //    return new
+            //    {
+            //        ChampionId = championId,
+            //        MatchCount = matchCount,
+            //        WinCount = winCount,
+            //        ChampionName = champion.Name
+            //    };
+            //}).OrderBy(c => c.ChampionName).ToList().ForEach(c =>
+            //{
+            //    Console.WriteLine("{0} - Matches: {1}, Wins: {2}", c.ChampionName, c.MatchCount, c.WinCount);
+            //});
+
+            // Get item purchase data
+            var itemPurchases = purchaseRecorder.ItemPurchases.Select(kvp => new
             {
-                int championId = kvp.Value.ChampionId;
-                int matchCount = kvp.Value.Matches.Count;
-                int winCount = kvp.Value.Matches.Count(m => m.Item2);
-
-                var champion = StaticDataStore.Champions.Champions.FirstOrDefault(ckvp => ckvp.Value.Id == championId).Value;
-
-                return new
+                ChampionId = kvp.Key,
+                ChampionName = StaticDataStore.Champions.Champions.FirstOrDefault(ckvp => ckvp.Value.Id == kvp.Key).Value.Name,
+                Matches = kvp.Value.Select(m => new
                 {
-                    ChampionId = championId,
-                    MatchCount = matchCount,
-                    WinCount = winCount,
-                    ChampionName = champion.Name
-                };
-            }).OrderBy(c => c.ChampionName).ToList().ForEach(c =>
-            {
-                Console.WriteLine("{0} - Matches: {1}, Wins: {2}", c.ChampionName, c.MatchCount, c.WinCount);
-            });
+                    MatchId = m.Value.MatchId,
+                    Purchases = m.Value.ItemPurchases
+                }).ToList()
+            }).ToList();
+
 
             // Complete
             Console.WriteLine();
