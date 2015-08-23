@@ -38,10 +38,7 @@ namespace ProBuilds
                 new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 2 });
 
             // Link blocks
-            PlayerBufferBlock.LinkTo(PlayerToMatchesBlock);
-
-            // Link continuation
-            PlayerBufferBlock.Completion.ContinueWith(t => PlayerToMatchesBlock.Complete());
+            PlayerBufferBlock.LinkTo(PlayerToMatchesBlock, new DataflowLinkOptions() { PropagateCompletion = true });
         }
 
         /// <summary>
@@ -54,6 +51,11 @@ namespace ProBuilds
             {
                 PlayerBufferBlock.Post(player);
             });
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Finished queueing players to process");
+            Console.ResetColor();
+
             PlayerBufferBlock.Complete();
         }
 
@@ -74,6 +76,9 @@ namespace ProBuilds
             // Get player data
             PlayerData playerData = PlayerDirectory.GetPlayerData(player);
 
+            // Retry a number of times to handle server-side rate limit errors
+            int retriesLeft = 3;
+
             // Get player match list, looping through pages until reaching a match we've seen for this player, or a match from an old patch
             // TODO: use the new match history api
             int startId = 0;
@@ -83,27 +88,61 @@ namespace ProBuilds
             bool oldMatches = false;
             while (!oldMatches)
             {
-                var newmatches = await api.GetMatchHistoryAsync(querySettings.Region, playerId,
-                    rankedQueues: queryQueues,
-                    beginIndex: startId,
-                    endIndex: endId);
-
-                // Filter out matches that aren't on the current patch
-                newmatches = newmatches.Where(m => StaticDataStore.Version.IsSamePatch(new RiotVersion(m.MatchVersion))).ToList();
-
-                // Check if we've seen any of these matches yet (if so, that's our marker to stop querying)
-                int foundMatchId = newmatches.FindIndex(m => m.MatchId == playerData.LatestMatchId);
-                if (foundMatchId != -1)
+                try
                 {
-                    newmatches = newmatches.GetRange(0, foundMatchId).ToList();
-                    oldMatches = true;
+                    var newmatches = await api.GetMatchHistoryAsync(querySettings.Region, playerId,
+                        rankedQueues: queryQueues,
+                        beginIndex: startId,
+                        endIndex: endId);
+
+                    // Prepare for next query
+                    startId += MaxMatchesPerQuery;
+                    endId += MaxMatchesPerQuery;
+
+                    // Filter out matches that aren't on the current patch
+                    newmatches = newmatches.Where(m => StaticDataStore.Version.IsSamePatch(new RiotVersion(m.MatchVersion))).ToList();
+
+                    // Check if we've seen any of these matches yet (if so, that's our marker to stop querying)
+                    int foundMatchId = newmatches.FindIndex(m => m.MatchId == playerData.LatestMatchId);
+                    if (foundMatchId != -1)
+                    {
+                        newmatches = newmatches.GetRange(0, foundMatchId).ToList();
+                        oldMatches = true;
+                    }
+
+                    matches.AddRange(newmatches);
+
+                    // If we filtered any matches out, we're past matches on the current patch
+                    if (newmatches.Count < MaxMatchesPerQuery)
+                        oldMatches = true;
                 }
+                catch (RiotSharpException ex)
+                {
+                    if ((ex.Message.StartsWith("429") || ex.Message.StartsWith("5")) && retriesLeft > 0)
+                    {
+                        // NOTE: This server-side rate handler is a bit rough, but I don't want to change RiotSharp too much unless I get more time.
+                        //       Ideally, the original error code would be attached to the RiotSharp exception so the handler could decide how to deal
+                        //       with it based on the status code. Unfortunately, it's not at this time - I'll clean it up in RiotSharp if I have time.
+                        //
+                        //       The error seems to be server-side, as there's no retry-after headers of any sort attached to the response. It should
+                        //       be safe to just retry after waiting a bit. I'm also retrying 500-series errors, since they seem to be recoverable.
+                        --retriesLeft;
 
-                matches.AddRange(newmatches);
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine("Server error getting matches for player {0} ({1} retries left)", player.PlayerOrTeamName, retriesLeft);
+                        Console.ResetColor();
 
-                // If we filtered any matches out, we're past matches on the current patch
-                if (newmatches.Count < MaxMatchesPerQuery)
-                    oldMatches = true;
+                        // Wait half a second
+                        Thread.Sleep(500);
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("Error getting matches for player {0}: {1}", player.PlayerOrTeamName, ex.Message);
+                        Console.ResetColor();
+                        oldMatches = true;
+                    }
+                }
             }
 
             // Store last seen match for this player

@@ -57,7 +57,7 @@ namespace ProBuilds
             playerMatchProducer = new PlayerMatchProducer(api, querySettings, queryQueues, testSynchronizer);
 
             // Create blocks
-            MatchFileBufferBlock = new BufferBlock<MatchDetail>();
+            //MatchFileBufferBlock = new BufferBlock<MatchDetail>();
             ConsumeMatchBlock = new TransformBlock<MatchSummary, MatchDetail>(
                 async match => await ConsumeMatch(match),
                 new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 5 });
@@ -69,7 +69,7 @@ namespace ProBuilds
 
             // Link blocks
             playerMatchProducer.PlayerToMatchesBlock.LinkTo(ConsumeMatchBlock, new DataflowLinkOptions() { PropagateCompletion = false });
-            MatchFileBufferBlock.LinkTo(ConsumeMatchDetailBlock, new DataflowLinkOptions() { PropagateCompletion = false });
+            //MatchFileBufferBlock.LinkTo(ConsumeMatchDetailBlock, new DataflowLinkOptions() { PropagateCompletion = false });
             ConsumeMatchBlock.LinkTo(ConsumeMatchDetailBlock, new DataflowLinkOptions() { PropagateCompletion = false }, match => match != null);
             ConsumeMatchBlock.LinkTo(DataflowBlock.NullTarget<MatchDetail>(), new DataflowLinkOptions() { PropagateCompletion = false });
         }
@@ -87,9 +87,21 @@ namespace ProBuilds
 
             // Waits
             playerMatchProducer.PlayerToMatchesBlock.Completion.Wait();
+            var pmstatus = playerMatchProducer.PlayerToMatchesBlock.Completion.Status;
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Finished processing players into matches");
+            Console.ResetColor();
 
             ConsumeMatchBlock.Complete();
-            Task.WaitAll(ConsumeMatchBlock.Completion, MatchFileBufferBlock.Completion);
+            var consumeStatus = ConsumeMatchBlock.Completion.Status;
+            //var filebufferstatus = MatchFileBufferBlock.Completion.Status;
+            //Task.WaitAll(ConsumeMatchBlock.Completion, MatchFileBufferBlock.Completion);
+            ConsumeMatchBlock.Completion.Wait();
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Finished Pulling matches");
+            Console.ResetColor();
 
             ConsumeMatchDetailBlock.Complete();
             ConsumeMatchDetailBlock.Completion.Wait();
@@ -100,16 +112,31 @@ namespace ProBuilds
             var matchFiles = MatchDirectory.GetAllMatchFiles();
 
             // Start the counter at how many files we already have
-            testSynchronizer.Count = matchFiles.Count();
+            int matchFileCount = matchFiles.Count();
+            testSynchronizer.Count = matchFileCount;
+            Console.WriteLine("Match Files Cached: {0}", matchFileCount);
 
             // Load match files
             matchFiles.AsParallel().WithDegreeOfParallelism(4).ForAll(filename =>
             {
                 MatchDetail match = MatchDirectory.LoadMatch(filename);
-                MatchFileBufferBlock.Post(match);
+                if (match == null)
+                {
+                    // Match file has an error, delete the cached match file
+                    File.Delete(filename);
+                }
+                else
+                {
+                    //MatchFileBufferBlock.Post(match);
+                    ConsumeMatchDetailBlock.Post(match);
+                }
             });
 
-            MatchFileBufferBlock.Complete();
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Finished loading match files");
+            Console.ResetColor();
+
+            //MatchFileBufferBlock.Complete();
         }
 
         private bool TryLockMatch(long matchId)
@@ -182,10 +209,9 @@ namespace ProBuilds
                 // Don't do anything with the exception yet
                 // TODO: log exceptions
 
-                ConsoleColor foreColor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(count + ": Error: " + ex.Message);
-                Console.ForegroundColor = foreColor;
+                Console.ResetColor();
             }
 
             // Remove the match from current downloads

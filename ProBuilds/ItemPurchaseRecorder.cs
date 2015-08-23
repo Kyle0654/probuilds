@@ -57,7 +57,16 @@ namespace ProBuilds
 
         public override string ToString()
         {
-            return string.Format("{0}: {1}", EventType.ToString(), ItemId);
+            if (EventType == RiotSharp.MatchEndpoint.EventType.ItemUndo)
+            {
+                string itemBeforeString = ItemBefore == 0 ? "0" : string.Format("{0} [{1}]", ItemBefore, StaticDataStore.Items.Items[ItemBefore].Name);
+                string itemAfterString = ItemAfter == 0 ? "0" : string.Format("{0} [{1}]", ItemAfter, StaticDataStore.Items.Items[ItemAfter].Name);
+                return string.Format("{0}: {1} => {2}", EventType.ToString(), itemBeforeString, itemAfterString);
+            }
+            else
+            {
+                return string.Format("{0}: {1} [{2}]", EventType.ToString(), ItemId, StaticDataStore.Items.Items[ItemId].Name);
+            }
         }
     }
 
