@@ -28,7 +28,6 @@ namespace ProBuilds
         private BufferBlock<MatchDetail> MatchFileBufferBlock;
         private TransformBlock<MatchSummary, MatchDetail> ConsumeMatchBlock;
         private ActionBlock<MatchDetail> ConsumeMatchDetailBlock;
-        private IDataflowBlock LastBlock;
 
         // Processors (contain data flow blocks, along with some state)
         private PlayerMatchProducer playerMatchProducer;
@@ -66,26 +65,13 @@ namespace ProBuilds
                 async match => await matchDetailProcessor.ConsumeMatchDetail(match),
                 new ExecutionDataflowBlockOptions() {
                     MaxDegreeOfParallelism = matchDetailProcessor.MaxDegreeOfParallelism
-                }); // TODO: figure out how to bound match detail generation to not overload memory
+                });
 
             // Link blocks
-            playerMatchProducer.PlayerToMatchesBlock.LinkTo(ConsumeMatchBlock);
-            MatchFileBufferBlock.LinkTo(ConsumeMatchDetailBlock);
-            ConsumeMatchBlock.LinkTo(ConsumeMatchDetailBlock, match => match != null);
-            ConsumeMatchBlock.LinkTo(DataflowBlock.NullTarget<MatchDetail>());
-
-            // Hook completion continuations
-            Action<Task> matchDetailGenerationCompletion = t =>
-            {
-                ConsumeMatchBlock.Complete();
-                Task.WaitAll(MatchFileBufferBlock.Completion, ConsumeMatchBlock.Completion);
-                ConsumeMatchDetailBlock.Complete();
-            };
-
-            playerMatchProducer.PlayerToMatchesBlock.Completion.ContinueWith(matchDetailGenerationCompletion);
-
-            // Mark the last block in the chain to make iterating easier
-            LastBlock = ConsumeMatchDetailBlock;
+            playerMatchProducer.PlayerToMatchesBlock.LinkTo(ConsumeMatchBlock, new DataflowLinkOptions() { PropagateCompletion = false });
+            MatchFileBufferBlock.LinkTo(ConsumeMatchDetailBlock, new DataflowLinkOptions() { PropagateCompletion = false });
+            ConsumeMatchBlock.LinkTo(ConsumeMatchDetailBlock, new DataflowLinkOptions() { PropagateCompletion = false }, match => match != null);
+            ConsumeMatchBlock.LinkTo(DataflowBlock.NullTarget<MatchDetail>(), new DataflowLinkOptions() { PropagateCompletion = false });
         }
 
         /// <summary>
@@ -99,8 +85,14 @@ namespace ProBuilds
             // Produce all players
             playerMatchProducer.Begin();
 
-            // Wait for completion
-            LastBlock.Completion.Wait();
+            // Waits
+            playerMatchProducer.PlayerToMatchesBlock.Completion.Wait();
+
+            ConsumeMatchBlock.Complete();
+            Task.WaitAll(ConsumeMatchBlock.Completion, MatchFileBufferBlock.Completion);
+
+            ConsumeMatchDetailBlock.Complete();
+            ConsumeMatchDetailBlock.Completion.Wait();
         }
 
         public void LoadMatchFiles()

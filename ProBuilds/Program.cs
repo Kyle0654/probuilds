@@ -98,11 +98,3 @@ namespace ProBuilds
         }
     }
 }
-                //var events = match.Timeline.Frames.Where(f => f.Events != null).SelectMany(f => f.Events).ToList();
-
-                //var itemPurchases = events.Where(e => e.EventType == RiotSharp.MatchEndpoint.EventType.ItemPurchased).Select(e => new {
-                //    ItemId = e.ItemId,
-                //    ItemName = itemDictionary.ContainsKey(e.ItemId) ? itemDictionary[e.ItemId].Name : null, // TODO: handle old match data (w.r.t. item data) - probably just ignore games older than current patch
-                //    Timestamp = e.Timestamp,
-                //    ParticipantId = e.ParticipantId
-                //}).ToList();

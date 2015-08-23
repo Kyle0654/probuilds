@@ -107,8 +107,11 @@ namespace ProBuilds
             }
 
             // Store last seen match for this player
-            playerData.LatestMatchId = matches[0].MatchId;
-            PlayerDirectory.SetPlayerData(player, playerData);
+            if (matches.Count > 0)
+            {
+                playerData.LatestMatchId = matches[0].MatchId;
+                PlayerDirectory.SetPlayerData(player, playerData);
+            }
 
             return matches;
         }
