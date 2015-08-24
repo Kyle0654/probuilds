@@ -46,8 +46,11 @@ namespace ProBuilds
         /// </summary>
         public void Begin()
         {
-            var players = api.GetChallengerLeague(querySettings.Region, querySettings.Queue);
-            players.Entries.ForEach(player =>
+            var playersChallenger = api.GetChallengerLeague(querySettings.Region, querySettings.Queue);
+            var playersMaster = api.GetMasterLeague(querySettings.Region, querySettings.Queue);
+            var playersAllPro = playersChallenger.Entries.Concat(playersMaster.Entries).ToList();
+
+            playersAllPro.ForEach(player =>
             {
                 PlayerBufferBlock.Post(player);
             });
@@ -118,7 +121,7 @@ namespace ProBuilds
                 }
                 catch (RiotSharpException ex)
                 {
-                    if ((ex.Message.StartsWith("429") || ex.Message.StartsWith("5")) && retriesLeft > 0)
+                    if (ex.IsRetryable() && retriesLeft > 0)
                     {
                         // NOTE: This server-side rate handler is a bit rough, but I don't want to change RiotSharp too much unless I get more time.
                         //       Ideally, the original error code would be attached to the RiotSharp exception so the handler could decide how to deal

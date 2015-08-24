@@ -15,7 +15,7 @@ namespace ProBuilds
 {
     public class TestSynchronizer
     {
-        public long Limit = 500; // Max matches stored on disk
+        public long Limit = 2000; // Max matches stored on disk
         public long Count = 0;
     }
 
@@ -25,7 +25,6 @@ namespace ProBuilds
     public class MatchPipeline
     {
         // Data flow blocks
-        private BufferBlock<MatchDetail> MatchFileBufferBlock;
         private TransformBlock<MatchSummary, MatchDetail> ConsumeMatchBlock;
         private ActionBlock<MatchDetail> ConsumeMatchDetailBlock;
 
@@ -54,13 +53,15 @@ namespace ProBuilds
             queryQueues.Add(querySettings.Queue);
 
             // Create match producer
-            playerMatchProducer = new PlayerMatchProducer(api, querySettings, queryQueues, testSynchronizer);
+            if (!querySettings.NoDownload)
+            {
+                playerMatchProducer = new PlayerMatchProducer(api, querySettings, queryQueues, testSynchronizer);
 
-            // Create blocks
-            //MatchFileBufferBlock = new BufferBlock<MatchDetail>();
-            ConsumeMatchBlock = new TransformBlock<MatchSummary, MatchDetail>(
-                async match => await ConsumeMatch(match),
-                new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 5 });
+                // Create blocks
+                ConsumeMatchBlock = new TransformBlock<MatchSummary, MatchDetail>(
+                    async match => await ConsumeMatch(match),
+                    new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 5 });
+            }
             ConsumeMatchDetailBlock = new ActionBlock<MatchDetail>(
                 async match => await matchDetailProcessor.ConsumeMatchDetail(match),
                 new ExecutionDataflowBlockOptions() {
@@ -68,10 +69,12 @@ namespace ProBuilds
                 });
 
             // Link blocks
-            playerMatchProducer.PlayerToMatchesBlock.LinkTo(ConsumeMatchBlock, new DataflowLinkOptions() { PropagateCompletion = false });
-            //MatchFileBufferBlock.LinkTo(ConsumeMatchDetailBlock, new DataflowLinkOptions() { PropagateCompletion = false });
-            ConsumeMatchBlock.LinkTo(ConsumeMatchDetailBlock, new DataflowLinkOptions() { PropagateCompletion = false }, match => match != null);
-            ConsumeMatchBlock.LinkTo(DataflowBlock.NullTarget<MatchDetail>(), new DataflowLinkOptions() { PropagateCompletion = false });
+            if (!querySettings.NoDownload)
+            {
+                playerMatchProducer.PlayerToMatchesBlock.LinkTo(ConsumeMatchBlock, new DataflowLinkOptions() { PropagateCompletion = false });
+                ConsumeMatchBlock.LinkTo(ConsumeMatchDetailBlock, new DataflowLinkOptions() { PropagateCompletion = false }, match => match != null);
+                ConsumeMatchBlock.LinkTo(DataflowBlock.NullTarget<MatchDetail>(), new DataflowLinkOptions() { PropagateCompletion = false });
+            }
         }
 
         /// <summary>
@@ -83,25 +86,24 @@ namespace ProBuilds
             LoadMatchFiles();
 
             // Produce all players
-            playerMatchProducer.Begin();
+            if (!querySettings.NoDownload)
+            {
+                playerMatchProducer.Begin();
 
-            // Waits
-            playerMatchProducer.PlayerToMatchesBlock.Completion.Wait();
-            var pmstatus = playerMatchProducer.PlayerToMatchesBlock.Completion.Status;
+                // Waits
+                playerMatchProducer.PlayerToMatchesBlock.Completion.Wait();
 
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("Finished processing players into matches");
-            Console.ResetColor();
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Finished processing players into matches");
+                Console.ResetColor();
 
-            ConsumeMatchBlock.Complete();
-            var consumeStatus = ConsumeMatchBlock.Completion.Status;
-            //var filebufferstatus = MatchFileBufferBlock.Completion.Status;
-            //Task.WaitAll(ConsumeMatchBlock.Completion, MatchFileBufferBlock.Completion);
-            ConsumeMatchBlock.Completion.Wait();
+                ConsumeMatchBlock.Complete();
+                ConsumeMatchBlock.Completion.Wait();
 
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("Finished Pulling matches");
-            Console.ResetColor();
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Finished Pulling matches");
+                Console.ResetColor();
+            }
 
             ConsumeMatchDetailBlock.Complete();
             ConsumeMatchDetailBlock.Completion.Wait();
@@ -120,7 +122,7 @@ namespace ProBuilds
             matchFiles.AsParallel().WithDegreeOfParallelism(4).ForAll(filename =>
             {
                 MatchDetail match = MatchDirectory.LoadMatch(filename);
-                if (match == null)
+                if (match == null || match.Timeline == null)
                 {
                     // Match file has an error, delete the cached match file
                     File.Delete(filename);
@@ -192,26 +194,40 @@ namespace ProBuilds
 
             MatchDetail matchData = null;
 
-            try
+            int retriesLeft = 3;
+            while (retriesLeft > 0)
             {
-                // Get the match with full timeline data
-                matchData = await api.GetMatchAsync(querySettings.Region, matchId, true);
-                if (matchData == null)
-                    throw new RiotSharpException("Null match: " + matchId);
+                try
+                {
+                    // Get the match with full timeline data
+                    matchData = api.GetMatch(querySettings.Region, matchId, true);
 
-                // Save it to disk
-                MatchDirectory.SaveMatch(matchData);
+                    // Verify the match
+                    if (matchData == null)
+                        throw new RiotSharpException("Null match: " + matchId);
 
-                Console.WriteLine(count);
-            }
-            catch (RiotSharpException ex)
-            {
-                // Don't do anything with the exception yet
-                // TODO: log exceptions
+                    if (matchData.Timeline == null)
+                        throw new RiotSharpException("Null match timeline: " + matchId);
 
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(count + ": Error: " + ex.Message);
-                Console.ResetColor();
+                    // Save it to disk
+                    MatchDirectory.SaveMatch(matchData);
+
+                    Console.WriteLine(count);
+                }
+                catch (RiotSharpException ex)
+                {
+                    if (ex.IsRetryable())
+                        --retriesLeft;
+                    else
+                        retriesLeft = 0;
+
+                    // Don't do anything with the exception yet
+                    // TODO: log exceptions
+
+                    Console.ForegroundColor = retriesLeft > 0 ? ConsoleColor.Yellow : ConsoleColor.Red;
+                    Console.WriteLine("{0}: Match Error ({1} retries left): {2}", count, retriesLeft, ex.Message);
+                    Console.ResetColor();
+                }
             }
 
             // Remove the match from current downloads

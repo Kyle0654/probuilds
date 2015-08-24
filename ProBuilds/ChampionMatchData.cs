@@ -35,17 +35,7 @@ namespace ProBuilds
         /// </summary>
         public ChampionMatchData<T> GetOrCreateMatchData(int championId)
         {
-            ChampionMatchData<T> championMatches;
-            if (!championMatchData.TryGetValue(championId, out championMatches))
-            {
-                // TODO: this is expensive, but a lot simpler than setting up all the 
-                championMatches = new ChampionMatchData<T>(championId);
-                if (!championMatchData.TryAdd(championId, championMatches))
-                {
-                    // Two threads tried to add a champion match data at the same time
-                    championMatchData.TryGetValue(championId, out championMatches);
-                }
-            }
+            ChampionMatchData<T> championMatches = championMatchData.GetOrAdd(championId, id => new ChampionMatchData<T>(id));
             return championMatches;
         }
     }

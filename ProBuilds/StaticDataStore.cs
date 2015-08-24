@@ -22,8 +22,8 @@ namespace ProBuilds
         public static void Initialize(StaticRiotApi riotStaticApi, RiotQuerySettings querySettings)
         {
             // Get static data
-            Champions = riotStaticApi.GetChampions(querySettings.Region);
-            Items = riotStaticApi.GetItems(querySettings.Region);
+            Champions = riotStaticApi.GetChampions(querySettings.Region, ChampionData.all);
+            Items = riotStaticApi.GetItems(querySettings.Region, ItemData.all);
             Realm = riotStaticApi.GetRealm(querySettings.Region);
 
             Version = new RiotVersion(Realm.V);

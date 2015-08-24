@@ -11,6 +11,12 @@ namespace ProBuilds
     {
         public Region Region { get; private set; }
         public Queue Queue { get; private set; }
+
+        /// <summary>
+        /// Whether or not new match data should be downloaded.
+        /// </summary>
+        /// <remarks>Will eventually be able to run analysis fully offline.</remarks>
+        public bool NoDownload { get; set; }
         
         /// <summary>
         /// Shared query settings to use across queries.
@@ -21,6 +27,8 @@ namespace ProBuilds
         {
             Region = region;
             Queue = queue;
+
+            NoDownload = false;
         }
     }
 }

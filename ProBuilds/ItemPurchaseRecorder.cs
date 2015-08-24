@@ -103,16 +103,8 @@ namespace ProBuilds
                 int championId = participant.ChampionId;
 
                 // Get the match listing for this champion (create if it doesn't exist)
-                ConcurrentDictionary<long, ChampionMatchItemPurchases> championMatches;
-                if (!ItemPurchases.TryGetValue(championId, out championMatches))
-                {
-                    championMatches = new ConcurrentDictionary<long, ChampionMatchItemPurchases>();
-                    if (!ItemPurchases.TryAdd(championId, championMatches))
-                    {
-                        // Two threads going through the same chain at once. One of them will win the addition though.
-                        ItemPurchases.TryGetValue(championId, out championMatches);
-                    }
-                }
+                ConcurrentDictionary<long, ChampionMatchItemPurchases> championMatches =
+                    ItemPurchases.GetOrAdd(championId, id => new ConcurrentDictionary<long, ChampionMatchItemPurchases>());
 
                 // Create a new match listing and add it to listings
                 ChampionMatchItemPurchases championItemPurchases = new ChampionMatchItemPurchases(championId, match.MatchId);
