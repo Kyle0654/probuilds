@@ -200,7 +200,7 @@ namespace ProBuilds
             bool eliminateRecipeComponents = true;
 
             PurchaseTree purchaseTree = new PurchaseTree();
-            var tf = itemPurchases.FirstOrDefault(ip => ip.ChampionName.StartsWith("Garen"));
+            var tf = itemPurchases.FirstOrDefault(ip => ip.ChampionName.StartsWith("Zilean"));
             tf.Matches.ForEach(match =>
             {
                 // Process out undos

@@ -120,6 +120,7 @@ namespace ProBuilds
 
             // Process item purchases
             GameState gameState = new GameState();
+
             match.Timeline.Frames.ForEach(frame =>
             {
                 if (frame == null ||
