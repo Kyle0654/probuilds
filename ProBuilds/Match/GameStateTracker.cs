@@ -58,10 +58,10 @@ namespace ProBuilds.Match
         internal void ItemUndo(int itemBefore, int itemAfter)
         {
             if (itemBefore != 0)
-                Items.Add(itemBefore);
+                Items.Remove(itemBefore);
 
             if (itemAfter != 0)
-                Items.Remove(itemAfter);
+                Items.Add(itemAfter);
         }
 
         #endregion
