@@ -10,7 +10,6 @@ namespace ProBuilds
     public interface IMatchDetailProcessor
     {
         int MaxDegreeOfParallelism { get; }
-        int BoundedCapacity { get; }
         Task ConsumeMatchDetail(MatchDetail match);
     }
 }

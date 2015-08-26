@@ -13,10 +13,28 @@ namespace ProBuilds
 {
     public class PlayerMatchProducer
     {
+        // A player to process
+        private class PlayerEntry
+        {
+            public LeagueEntry Player;
+            public Region Region;
+
+            public PlayerEntry(LeagueEntry player, Region region)
+            {
+                Player = player;
+                Region = region;
+            }
+        }
+
         static int MaxMatchesPerQuery = 15;
 
-        private BufferBlock<LeagueEntry> PlayerBufferBlock;
-        public TransformManyBlock<LeagueEntry, MatchSummary> PlayerToMatchesBlock { get; private set; }
+        private BufferBlock<PlayerEntry> PlayerBufferBlock;
+        private TransformManyBlock<PlayerEntry, MatchSummary> PlayerToMatchesBlock;
+
+        /// <summary>
+        /// The block that produces matches.
+        /// </summary>
+        public ISourceBlock<MatchSummary> MatchProducerBlock { get { return PlayerToMatchesBlock; } }
 
         private RiotApi api;
         private RiotQuerySettings querySettings;
@@ -32,8 +50,8 @@ namespace ProBuilds
             this.testSynchronizer = testSynchronizer;
 
             // Create blocks
-            PlayerBufferBlock = new BufferBlock<LeagueEntry>();
-            PlayerToMatchesBlock = new TransformManyBlock<LeagueEntry, MatchSummary>(
+            PlayerBufferBlock = new BufferBlock<PlayerEntry>();
+            PlayerToMatchesBlock = new TransformManyBlock<PlayerEntry, MatchSummary>(
                 async player => await ConsumePlayerAsync(player),
                 new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 2 });
 
@@ -46,11 +64,55 @@ namespace ProBuilds
         /// </summary>
         public void Begin()
         {
-            var playersChallenger = api.GetChallengerLeague(querySettings.Region, querySettings.Queue);
-            var playersMaster = api.GetMasterLeague(querySettings.Region, querySettings.Queue);
-            var playersAllPro = playersChallenger.Entries.Concat(playersMaster.Entries).ToList();
+            // Get players
+            var playersAllChallenger = StaticDataStore.Realms.Keys.AsParallel().WithDegreeOfParallelism(4).SelectMany(region =>
+            {
+                int retries = 3;
+                while (retries > 0)
+                {
+                    try
+                    {
+                        return api.GetChallengerLeague(region, querySettings.Queue).Entries.Select(entry => new PlayerEntry(entry, region));
+                    }
+                    catch (RiotSharpException ex)
+                    {
+                        --retries;
 
-            playersAllPro.ForEach(player =>
+                        // Rethrow if we can't retry this exception
+                        if (!ex.IsRetryable())
+                            throw;
+                    }
+                }
+
+                throw new RiotSharpException(string.Format("Error downloading matches for region {0}", region.ToString()));
+            });
+
+            var playersAllMaster = StaticDataStore.Realms.Keys.AsParallel().WithDegreeOfParallelism(4).SelectMany(region =>
+            {
+                int retries = 3;
+                while (retries > 0)
+                {
+                    try
+                    {
+                        return api.GetMasterLeague(region, querySettings.Queue).Entries.Select(entry => new PlayerEntry(entry, region));
+                    }
+                    catch (RiotSharpException ex)
+                    {
+                        --retries;
+
+                        // Rethrow if we can't retry this exception
+                        if (!ex.IsRetryable())
+                            throw;
+                    }
+                }
+
+                throw new RiotSharpException(string.Format("Error downloading matches for region {0}", region.ToString()));
+            });
+
+            var playersAllPro = playersAllChallenger.Concat(playersAllMaster);
+
+            // Post players
+            playersAllPro.ForAll(player =>
             {
                 PlayerBufferBlock.Post(player);
             });
@@ -65,7 +127,7 @@ namespace ProBuilds
         /// <summary>
         /// Consume players and list matches per player.
         /// </summary>
-        private async Task<IEnumerable<MatchSummary>> ConsumePlayerAsync(LeagueEntry player)
+        private async Task<IEnumerable<MatchSummary>> ConsumePlayerAsync(PlayerEntry player)
         {
             // <TEST> download limiting
             long count = Interlocked.Read(ref testSynchronizer.Count);
@@ -74,10 +136,10 @@ namespace ProBuilds
             // </TEST>
 
             // Get player id
-            long playerId = long.Parse(player.PlayerOrTeamId);
+            long playerId = long.Parse(player.Player.PlayerOrTeamId);
 
             // Get player data
-            PlayerData playerData = PlayerDirectory.GetPlayerData(player);
+            PlayerData playerData = PlayerDirectory.GetPlayerData(player.Player);
 
             // Retry a number of times to handle server-side rate limit errors
             int retriesLeft = 3;
@@ -93,7 +155,7 @@ namespace ProBuilds
             {
                 try
                 {
-                    var newmatches = await api.GetMatchHistoryAsync(querySettings.Region, playerId,
+                    var newmatches = await api.GetMatchHistoryAsync(player.Region, playerId,
                         rankedQueues: queryQueues,
                         beginIndex: startId,
                         endIndex: endId);
@@ -132,7 +194,7 @@ namespace ProBuilds
                         --retriesLeft;
 
                         Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine("Server error getting matches for player {0} ({1} retries left)", player.PlayerOrTeamName, retriesLeft);
+                        Console.WriteLine("Server error getting matches for player {0} ({1} retries left)", player.Player.PlayerOrTeamName, retriesLeft);
                         Console.ResetColor();
 
                         // Wait half a second
@@ -141,7 +203,7 @@ namespace ProBuilds
                     else
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("Error getting matches for player {0}: {1}", player.PlayerOrTeamName, ex.Message);
+                        Console.WriteLine("Error getting matches for player {0}: {1}", player.Player.PlayerOrTeamName, ex.Message);
                         Console.ResetColor();
                         oldMatches = true;
                     }
@@ -152,7 +214,7 @@ namespace ProBuilds
             if (matches.Count > 0)
             {
                 playerData.LatestMatchId = matches[0].MatchId;
-                PlayerDirectory.SetPlayerData(player, playerData);
+                PlayerDirectory.SetPlayerData(player.Player, playerData);
             }
 
             return matches;

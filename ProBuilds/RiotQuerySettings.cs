@@ -9,7 +9,6 @@ namespace ProBuilds
 {
     public class RiotQuerySettings
     {
-        public Region Region { get; private set; }
         public Queue Queue { get; private set; }
 
         /// <summary>
@@ -22,10 +21,8 @@ namespace ProBuilds
         /// Shared query settings to use across queries.
         /// </summary>
         public RiotQuerySettings(
-            Region region = RiotSharp.Region.na,
             Queue queue = Queue.RankedSolo5x5)
         {
-            Region = region;
             Queue = queue;
 
             NoDownload = false;

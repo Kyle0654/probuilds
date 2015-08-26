@@ -60,6 +60,7 @@
     <Compile Include="ItemSetWriter.cs" />
     <Compile Include="MatchDirectory.cs" />
     <Compile Include="MatchPipeline.cs" />
+    <Compile Include="Match\GameStateTracker.cs" />
     <Compile Include="PlayerDirectory.cs" />
     <Compile Include="PlayerMatchProducer.cs" />
     <Compile Include="Program.cs" />

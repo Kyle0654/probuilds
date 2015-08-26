@@ -117,7 +117,7 @@ namespace ProBuilds
         {
             // Create query parameters
             // TODO: pass these in on command line, or in a settings file?
-            RiotQuerySettings querySettings = new RiotQuerySettings(Region.na, Queue.RankedSolo5x5);
+            RiotQuerySettings querySettings = new RiotQuerySettings(Queue.RankedSolo5x5);
 
             // Parse api key from args
             if (args.Length == 0)
@@ -153,7 +153,7 @@ namespace ProBuilds
 
             // Get static API and initialize static data
             StaticRiotApi staticApi = StaticRiotApi.GetInstance(apiKey);
-            StaticDataStore.Initialize(staticApi, querySettings);
+            StaticDataStore.Initialize(staticApi);
 
             // Create pipeline
             //ChampionWinCounter winCounter = new ChampionWinCounter();

@@ -9,8 +9,7 @@ namespace ProBuilds
 {
     public class ChampionWinCounter : IMatchDetailProcessor
     {
-        public int BoundedCapacity { get { return 128; } }
-        public int MaxDegreeOfParallelism { get { return 8; } }
+        public int MaxDegreeOfParallelism { get { return 16; } }
 
         public ChampionMatchDataCollection<bool> ChampionMatchData { get; private set; }
 

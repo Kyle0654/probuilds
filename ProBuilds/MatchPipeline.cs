@@ -15,7 +15,7 @@ namespace ProBuilds
 {
     public class TestSynchronizer
     {
-        public long Limit = 2000; // Max matches stored on disk
+        public long Limit = 2000; // Max matches to process (pulls from API if not enough on disk)
         public long Count = 0;
     }
 
@@ -71,7 +71,7 @@ namespace ProBuilds
             // Link blocks
             if (!querySettings.NoDownload)
             {
-                playerMatchProducer.PlayerToMatchesBlock.LinkTo(ConsumeMatchBlock, new DataflowLinkOptions() { PropagateCompletion = false });
+                playerMatchProducer.MatchProducerBlock.LinkTo(ConsumeMatchBlock, new DataflowLinkOptions() { PropagateCompletion = false });
                 ConsumeMatchBlock.LinkTo(ConsumeMatchDetailBlock, new DataflowLinkOptions() { PropagateCompletion = false }, match => match != null);
                 ConsumeMatchBlock.LinkTo(DataflowBlock.NullTarget<MatchDetail>(), new DataflowLinkOptions() { PropagateCompletion = false });
             }
@@ -91,7 +91,7 @@ namespace ProBuilds
                 playerMatchProducer.Begin();
 
                 // Waits
-                playerMatchProducer.PlayerToMatchesBlock.Completion.Wait();
+                playerMatchProducer.MatchProducerBlock.Completion.Wait();
 
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("Finished processing players into matches");
@@ -112,6 +112,8 @@ namespace ProBuilds
         public void LoadMatchFiles()
         {
             var matchFiles = MatchDirectory.GetAllMatchFiles();
+            if (matchFiles.Count() > testSynchronizer.Limit)
+                matchFiles = matchFiles.Take((int)testSynchronizer.Limit);
 
             // Start the counter at how many files we already have
             int matchFileCount = matchFiles.Count();
@@ -119,7 +121,7 @@ namespace ProBuilds
             Console.WriteLine("Match Files Cached: {0}", matchFileCount);
 
             // Load match files
-            matchFiles.AsParallel().WithDegreeOfParallelism(4).ForAll(filename =>
+            matchFiles.AsParallel().WithDegreeOfParallelism(8).ForAll(filename =>
             {
                 MatchDetail match = MatchDirectory.LoadMatch(filename);
                 if (match == null || match.Timeline == null)
@@ -129,7 +131,6 @@ namespace ProBuilds
                 }
                 else
                 {
-                    //MatchFileBufferBlock.Post(match);
                     ConsumeMatchDetailBlock.Post(match);
                 }
             });
@@ -200,7 +201,7 @@ namespace ProBuilds
                 try
                 {
                     // Get the match with full timeline data
-                    matchData = api.GetMatch(querySettings.Region, matchId, true);
+                    matchData = api.GetMatch(match.Region, matchId, true);
 
                     // Verify the match
                     if (matchData == null)
@@ -211,6 +212,9 @@ namespace ProBuilds
 
                     // Save it to disk
                     MatchDirectory.SaveMatch(matchData);
+
+                    // Success, don't retry anymore
+                    retriesLeft = 0;
 
                     Console.WriteLine(count);
                 }

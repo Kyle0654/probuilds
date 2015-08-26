@@ -1,33 +1,15 @@
-﻿using RiotSharp.MatchEndpoint;
+﻿using ProBuilds.Match;
+using RiotSharp.MatchEndpoint;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ProBuilds
 {
-    public class GameState
-    {
-        // TODO: fill this out over the game
-        public TimeSpan Timestamp;
-
-        public GameState() { }
-
-        /// <summary>
-        /// Create a clone of the game state (always use this when storing a copy, as it will change during processing).
-        /// </summary>
-        /// <returns></returns>
-        public GameState Clone()
-        {
-            return new GameState()
-            {
-                Timestamp = this.Timestamp
-            };
-        }
-    }
-
     public class ItemPurchaseInformation
     {
         public int ItemId;
@@ -36,21 +18,22 @@ namespace ProBuilds
 
         public EventType EventType;
 
-        public GameState GameState;
+        public GameStateTracker GameState;
 
         public ItemPurchaseInformation() { }
 
-        public ItemPurchaseInformation(Event itemEvent, GameState gameState)
+        public ItemPurchaseInformation(Event itemEvent, GameStateTracker gameState)
         {
             ItemId = itemEvent.ItemId;
             ItemBefore = itemEvent.ItemBefore;
             ItemAfter = itemEvent.ItemAfter;
-            EventType = itemEvent.EventType ?? EventType.AscendedEvent; // AscendedEvent is a failure case
 
-            if (EventType == RiotSharp.MatchEndpoint.EventType.AscendedEvent)
+            if (!itemEvent.EventType.HasValue)
             {
                 throw new ArgumentException("Event type must not be null.", "itemEvent");
             }
+
+            EventType = itemEvent.EventType.Value;
 
             GameState = gameState.Clone();
         }
@@ -86,8 +69,9 @@ namespace ProBuilds
 
     public class ItemPurchaseRecorder : IMatchDetailProcessor
     {
+        private int ProcessedCount = 0;
+
         public int MaxDegreeOfParallelism { get { return 8; } }
-        public int BoundedCapacity { get { return 128; } }
 
         public ConcurrentDictionary<int, ConcurrentDictionary<long, ChampionMatchItemPurchases>> ItemPurchases = new ConcurrentDictionary<int, ConcurrentDictionary<long, ChampionMatchItemPurchases>>();
 
@@ -95,6 +79,9 @@ namespace ProBuilds
 
         public async Task ConsumeMatchDetail(MatchDetail match)
         {
+            int processedId = Interlocked.Increment(ref ProcessedCount);
+            Console.WriteLine("Processing Match {0}", processedId);
+
             Dictionary<int, ChampionMatchItemPurchases> championPurchases = new Dictionary<int, ChampionMatchItemPurchases>();
 
             // Get all champions in this match, and initialize recording structures
@@ -119,7 +106,11 @@ namespace ProBuilds
             }
 
             // Process item purchases
-            GameState gameState = new GameState();
+            GameStateTracker gameState = new GameStateTracker(match);
+
+            // Handle null values
+            if (match.Timeline == null || match.Timeline.Frames == null)
+                return;
 
             match.Timeline.Frames.ForEach(frame =>
             {
@@ -137,7 +128,7 @@ namespace ProBuilds
                         return;
 
                     // Update any game state that can be gathered from all events
-                    gameState.Timestamp = e.Timestamp;
+                    gameState.Update(frame, e);
 
                     // Process item events
                     if (ItemEventTypes.Contains(e.EventType.Value))

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ProBuilds
 {
-    public class RiotVersion
+    public class RiotVersion : IComparable
     {
         /// <summary>
         /// Tolerance to use when comparing versions
@@ -60,6 +60,56 @@ namespace ProBuilds
         public override string ToString()
         {
             return version;
+        }
+
+        public int CompareTo(object obj)
+        {
+            if (!(obj is RiotVersion))
+                return -1;
+
+            if (ReferenceEquals(this, obj))
+                return 0;
+
+            RiotVersion other = obj as RiotVersion;
+            int diff = Major.CompareTo(other.Major);
+            if (diff != 0 || Minor == null) return diff;
+
+            diff = Minor.CompareTo(other.Minor);
+            if (diff != 0 || Patch == null) return diff;
+
+            diff = Patch.CompareTo(other.Patch);
+            if (diff != 0 || SubPatch == null) return diff;
+
+            diff = SubPatch.CompareTo(other.SubPatch);
+            return diff;
+        }
+
+        public static bool operator <(RiotVersion a, RiotVersion b)
+        {
+            return a.CompareTo(b) < 0;
+        }
+
+        public static bool operator >(RiotVersion a, RiotVersion b)
+        {
+            return a.CompareTo(b) > 0;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (!(obj is RiotVersion))
+                return false;
+
+            if (ReferenceEquals(this, obj))
+                return true;
+
+
+            RiotVersion other = obj as RiotVersion;
+            return version == other.version;
+        }
+
+        public override int GetHashCode()
+        {
+            return version.GetHashCode();
         }
     }
 }
