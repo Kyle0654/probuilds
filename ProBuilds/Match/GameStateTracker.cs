@@ -27,8 +27,9 @@ namespace ProBuilds.Match
 
         public ChampionState Clone()
         {
-            ChampionState state = new ChampionState(ChampionId)
+            ChampionState state = new ChampionState()
             {
+                ChampionId = this.ChampionId,
                 Kills = this.Kills,
                 Deaths = this.Deaths,
                 Assists = this.Assists,
@@ -110,7 +111,7 @@ namespace ProBuilds.Match
             }
             foreach (var champion in Champions)
             {
-                state.Champions.Add(champion.Key, champion.Value);
+                state.Champions.Add(champion.Key, champion.Value.Clone());
             }
 
             return state;
