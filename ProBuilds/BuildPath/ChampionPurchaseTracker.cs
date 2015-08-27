@@ -122,31 +122,39 @@ namespace ProBuilds.BuildPath
             // Eliminate all undos
             Stack<ItemPurchaseInformation> purchaseStack = new Stack<ItemPurchaseInformation>();
 
-            matchPurchases.ItemPurchases.ForEach(purchase =>
+            try
             {
-                if (purchase.EventType != EventType.ItemUndo)
+                matchPurchases.ItemPurchases.ForEach(purchase =>
                 {
-                    purchaseStack.Push(purchase);
-                    return;
-                }
-                else
-                {
-                    // Remove any destroy events until the purchase is found
-                    while (purchaseStack.Peek().EventType == EventType.ItemDestroyed)
+                    if (purchase.EventType != EventType.ItemUndo)
                     {
+                        purchaseStack.Push(purchase);
+                        return;
+                    }
+                    else
+                    {
+                        // Remove any destroy events until the purchase is found
+                        while (purchaseStack.Peek().EventType == EventType.ItemDestroyed)
+                        {
+                            purchaseStack.Pop();
+                        }
+
+                        if (purchaseStack.Peek().ItemId != purchase.ItemBefore && purchaseStack.Peek().ItemId != purchase.ItemAfter)
+                        {
+                            throw new Exception("Undo not matched by purchase or sale.");
+                        }
+
                         purchaseStack.Pop();
                     }
+                });
+            }
+            catch (Exception ex)
+            {
+                // Something went wrong, this match is invalid
+                return;
+            }
 
-                    if (purchaseStack.Peek().ItemId != purchase.ItemBefore && purchaseStack.Peek().ItemId != purchase.ItemAfter)
-                    {
-                        throw new Exception("Undo not matched by purchase or sale.");
-                    }
-
-                    purchaseStack.Pop();
-                }
-            });
-
-            List<ItemPurchaseInformation> purchases = purchaseStack.ToList();
+            List<ItemPurchaseInformation> purchases = purchaseStack.Reverse().ToList();
 
             // Filter out item purchases by game state
             var startPurchases = purchases.Where(purchase =>
