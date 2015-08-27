@@ -1,4 +1,5 @@
-﻿using RiotSharp.MatchEndpoint;
+﻿using Newtonsoft.Json;
+using RiotSharp.MatchEndpoint;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,12 +18,19 @@ namespace ProBuilds.Match
 
         public List<int> Items;
 
+        /// <summary>
+        /// Used to track item combinations.
+        /// </summary>
+        [JsonIgnore]
+        private List<Tuple<int, List<int>>> ItemCombines;
+
         public ChampionState() { }
 
         public ChampionState(int championId)
         {
             ChampionId = championId;
             Items = new List<int>();
+            ItemCombines = new List<Tuple<int, List<int>>>();
         }
 
         public ChampionState Clone()
@@ -44,6 +52,7 @@ namespace ProBuilds.Match
         internal void ItemPurchased(int itemId)
         {
             Items.Add(itemId);
+            ItemCombines.Add(new Tuple<int, List<int>>(itemId, new List<int>()));
         }
 
         internal void ItemSold(int itemId)
@@ -54,12 +63,28 @@ namespace ProBuilds.Match
         internal void ItemDestroyed(int itemId)
         {
             Items.Remove(itemId);
+
+            // Keep track of combined items for undo
+            if (!StaticDataStore.Items.Items[itemId].Consumed && ItemCombines.Count > 0)
+            {
+                ItemCombines[ItemCombines.Count - 1].Item2.Add(itemId);
+            }
         }
 
         internal void ItemUndo(int itemBefore, int itemAfter)
         {
             if (itemBefore != 0)
+            {
                 Items.Remove(itemBefore);
+
+                // Restore any combined items that were destroyed as part of the purchase being undone.
+                var purchase = ItemCombines.LastOrDefault();
+                if (purchase != null)
+                {
+                    ItemCombines.RemoveAt(ItemCombines.Count - 1);
+                    Items.AddRange(purchase.Item2);
+                }
+            }
 
             if (itemAfter != 0)
                 Items.Add(itemAfter);
