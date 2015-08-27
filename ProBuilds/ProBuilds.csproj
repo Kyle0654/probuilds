@@ -13,7 +13,7 @@
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -51,6 +51,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BuildPath\ChampionPurchases.cs" />
+    <Compile Include="BuildPath\ChampionPurchaseTracker.cs" />
     <Compile Include="BuildPath\IBuildSolver.cs" />
     <Compile Include="ChampionMatchData.cs" />
     <Compile Include="ChampionWinCounter.cs" />
@@ -58,6 +59,7 @@
     <Compile Include="IMatchDetailProcessor.cs" />
     <Compile Include="ItemPurchaseRecorder.cs" />
     <Compile Include="ItemSetWriter.cs" />
+    <Compile Include="ChampionPurchaseDirectory.cs" />
     <Compile Include="MatchDirectory.cs" />
     <Compile Include="MatchPipeline.cs" />
     <Compile Include="Match\GameStateTracker.cs" />

@@ -1,4 +1,5 @@
-﻿using ProBuilds.Match;
+﻿using ProBuilds.BuildPath;
+using ProBuilds.Match;
 using RiotSharp.MatchEndpoint;
 using System;
 using System.Collections.Concurrent;
@@ -73,7 +74,8 @@ namespace ProBuilds
 
         public int MaxDegreeOfParallelism { get { return 8; } }
 
-        public ConcurrentDictionary<int, ConcurrentDictionary<long, ChampionMatchItemPurchases>> ItemPurchases = new ConcurrentDictionary<int, ConcurrentDictionary<long, ChampionMatchItemPurchases>>();
+        //public ConcurrentDictionary<int, ConcurrentDictionary<long, ChampionMatchItemPurchases>> ItemPurchases = new ConcurrentDictionary<int, ConcurrentDictionary<long, ChampionMatchItemPurchases>>();
+        public ConcurrentDictionary<int, ChampionPurchaseTracker> ChampionPurchaseTrackers = new ConcurrentDictionary<int, ChampionPurchaseTracker>();
 
         private static EventType[] ItemEventTypes = new EventType[] { EventType.ItemPurchased, EventType.ItemDestroyed, EventType.ItemSold, EventType.ItemUndo };
 
@@ -89,17 +91,17 @@ namespace ProBuilds
             {
                 int championId = participant.ChampionId;
 
-                // Get the match listing for this champion (create if it doesn't exist)
-                ConcurrentDictionary<long, ChampionMatchItemPurchases> championMatches =
-                    ItemPurchases.GetOrAdd(championId, id => new ConcurrentDictionary<long, ChampionMatchItemPurchases>());
+                //// Get the match listing for this champion (create if it doesn't exist)
+                //ConcurrentDictionary<long, ChampionMatchItemPurchases> championMatches =
+                //    ItemPurchases.GetOrAdd(championId, id => new ConcurrentDictionary<long, ChampionMatchItemPurchases>());
 
-                // Create a new match listing and add it to listings
+                //// Create a new match listing and add it to listings
                 ChampionMatchItemPurchases championItemPurchases = new ChampionMatchItemPurchases(championId, match.MatchId);
-                if (!championMatches.TryAdd(match.MatchId, championItemPurchases))
-                {
-                    // We have already tried to process this match for some reason...
-                    throw new ArgumentException("Match has already been processed.", "match");
-                }
+                //if (!championMatches.TryAdd(match.MatchId, championItemPurchases))
+                //{
+                //    // We have already tried to process this match for some reason...
+                //    throw new ArgumentException("Match has already been processed.", "match");
+                //}
 
                 // For recording, we'll index by participant id so we don't have to look up champion id every time
                 championPurchases.Add(participant.ParticipantId, championItemPurchases);
@@ -142,6 +144,13 @@ namespace ProBuilds
                         championPurchases[e.ParticipantId].ItemPurchases.Add(itemPurchase);
                     }
                 });
+            });
+
+            // Analyze match
+            championPurchases.Values.AsParallel().WithDegreeOfParallelism(5).ForAll(it =>
+            {
+                var tracker = ChampionPurchaseTrackers.GetOrAdd(it.ChampionId, id => new ChampionPurchaseTracker(id));
+                tracker.Process(it);
             });
         }
     }

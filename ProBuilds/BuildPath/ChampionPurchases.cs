@@ -17,16 +17,17 @@ namespace ProBuilds.BuildPath
         /// </summary>
         public static Dictionary<int, ChampionPurchases> Create(ItemPurchaseRecorder recorder)
         {
-            var purchases = recorder.ItemPurchases.Select(kvp =>
-                new ChampionPurchases()
-                {
-                    ChampionId = kvp.Key,
-                    ChampionName = StaticDataStore.Champions.Champions.FirstOrDefault(ckvp => ckvp.Value.Id == kvp.Key).Value.Name,
-                    Matches = kvp.Value.ToDictionary(m => m.Value.MatchId, m => m.Value.ItemPurchases)
-                }
-            ).ToDictionary(p => p.ChampionId, p => p);
+            //var purchases = recorder.ItemPurchases.Select(kvp =>
+            //    new ChampionPurchases()
+            //    {
+            //        ChampionId = kvp.Key,
+            //        ChampionName = StaticDataStore.Champions.Champions.FirstOrDefault(ckvp => ckvp.Value.Id == kvp.Key).Value.Name,
+            //        Matches = kvp.Value.ToDictionary(m => m.Value.MatchId, m => m.Value.ItemPurchases)
+            //    }
+            //).ToDictionary(p => p.ChampionId, p => p);
 
-            return purchases;
+            //return purchases;
+            return null;
         }
     }
 }

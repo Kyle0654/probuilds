@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using ProBuilds.BuildPath;
 using RiotSharp;
 using RiotSharp.LeagueEndpoint;
 using RiotSharp.MatchEndpoint;
@@ -161,6 +162,13 @@ namespace ProBuilds
             MatchPipeline pipeline = new MatchPipeline(api, querySettings, purchaseRecorder);
             pipeline.Process();
 
+            // Get stats
+            Dictionary<int, ChampionPurchaseStats> championPurchaseStats = purchaseRecorder.ChampionPurchaseTrackers.ToDictionary(
+                kvp => kvp.Value.ChampionId,
+                kvp => kvp.Value.GetStats());
+
+            #region Test Code
+
             // NOTE: this code is used to write out win rates
             //// Write out champion data
             //var championMatchData = winCounter.ChampionMatchData.ChampionMatchData;
@@ -184,103 +192,111 @@ namespace ProBuilds
             //    Console.WriteLine("{0} - Matches: {1}, Wins: {2}", c.ChampionName, c.MatchCount, c.WinCount);
             //});
 
-            // Get item purchase data
-            var itemPurchases = purchaseRecorder.ItemPurchases.Select(kvp => new
-            {
-                ChampionId = kvp.Key,
-                ChampionName = StaticDataStore.Champions.Champions.FirstOrDefault(ckvp => ckvp.Value.Id == kvp.Key).Value.Name,
-                Matches = kvp.Value.Select(m => new
-                {
-                    MatchId = m.Value.MatchId,
-                    Purchases = m.Value.ItemPurchases
-                }).ToList()
-            }).ToList();
+            /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-            bool eliminateRecipeComponents = true;
+            //// Get item purchase data
+            //var itemPurchases = purchaseRecorder.ItemPurchases.Select(kvp => new
+            //{
+            //    ChampionId = kvp.Key,
+            //    ChampionName = StaticDataStore.Champions.Champions.FirstOrDefault(ckvp => ckvp.Value.Id == kvp.Key).Value.Name,
+            //    Matches = kvp.Value.Select(m => new
+            //    {
+            //        MatchId = m.Value.MatchId,
+            //        Purchases = m.Value.ItemPurchases
+            //    }).ToList()
+            //}).ToList();
 
-            PurchaseTree purchaseTree = new PurchaseTree();
-            var tf = itemPurchases.FirstOrDefault(ip => ip.ChampionName.StartsWith("Zilean"));
-            tf.Matches.ForEach(match =>
-            {
-                // Process out undos
-                List<ItemPurchaseInformation> tfpurchases = new List<ItemPurchaseInformation>();
-                ItemStatic lastPurchase = null;
-                match.Purchases.ForEach(purchase =>
-                {
-                    switch (purchase.EventType)
-                    {
-                        case EventType.ItemPurchased:
-                        {
-                            tfpurchases.Add(purchase);
-                            lastPurchase = StaticDataStore.Items.Items[tfpurchases.Last().ItemId];
-                            break;
-                        }
-                        case EventType.ItemUndo:
-                        {
-                            // Remove last item if we undid a purchase
-                            // NOTE: we're not tracking selling back items yet (not a great way to represent that in item sets)
-                            // NOTE: we may want to do it later under a heading "starter items - sell these later"
-                            // NOTE: we may also want to use the purchase order to represent selling. Like:
-                            //       [Guardian Angel] => [Thornmail]
-                            //       e.g. "Sell Guardian Angel to purchase Thornmail"
-                            if (tfpurchases.Count > 0 && tfpurchases.Last().ItemId == purchase.ItemAfter)
-                            {
-                                tfpurchases.RemoveAt(tfpurchases.Count - 1);
-                                lastPurchase = StaticDataStore.Items.Items[tfpurchases.Last().ItemId];
-                            }
-                            break;
-                        }
-                        case EventType.ItemDestroyed:
-                        {
-                            if (!eliminateRecipeComponents)
-                                break;
 
-                            if (lastPurchase == null || lastPurchase.Consumed)
-                                break;
+            //bool eliminateRecipeComponents = true;
 
-                            // List all recipe components of the last purchase.
-                            List<int> recipe = new List<int>() { lastPurchase.Id };
-                            for (int i = 0; i < recipe.Count; ++i)
-                            {
-                                var recipeitem = StaticDataStore.Items.Items[recipe[i]];
-                                if (recipeitem.From != null)
-                                {
-                                    var fromids = recipeitem.From.Select(idstring => int.Parse(idstring)).Distinct().Where(id => !recipe.Contains(id));
-                                    recipe.AddRange(fromids);
-                                }
-                            }
+            //PurchaseTree purchaseTree = new PurchaseTree();
+            //var tf = itemPurchases.FirstOrDefault(ip => ip.ChampionName.StartsWith("Zilean"));
+            //tf.Matches.ForEach(match =>
+            //{
+            //    // Process out undos
+            //    List<ItemPurchaseInformation> tfpurchases = new List<ItemPurchaseInformation>();
+            //    ItemStatic lastPurchase = null;
+            //    match.Purchases.ForEach(purchase =>
+            //    {
+            //        switch (purchase.EventType)
+            //        {
+            //            case EventType.ItemPurchased:
+            //            {
+            //                tfpurchases.Add(purchase);
+            //                lastPurchase = StaticDataStore.Items.Items[tfpurchases.Last().ItemId];
+            //                break;
+            //            }
+            //            case EventType.ItemUndo:
+            //            {
+            //                // Remove last item if we undid a purchase
+            //                // NOTE: we're not tracking selling back items yet (not a great way to represent that in item sets)
+            //                // NOTE: we may want to do it later under a heading "starter items - sell these later"
+            //                // NOTE: we may also want to use the purchase order to represent selling. Like:
+            //                //       [Guardian Angel] => [Thornmail]
+            //                //       e.g. "Sell Guardian Angel to purchase Thornmail"
+            //                if (tfpurchases.Count > 0 && tfpurchases.Last().ItemId == purchase.ItemAfter)
+            //                {
+            //                    tfpurchases.RemoveAt(tfpurchases.Count - 1);
+            //                    lastPurchase = StaticDataStore.Items.Items[tfpurchases.Last().ItemId];
+            //                }
+            //                break;
+            //            }
+            //            case EventType.ItemDestroyed:
+            //            {
+            //                if (!eliminateRecipeComponents)
+            //                    break;
 
-                            // If this destroy id matches any components, remove it (the latest) from purchases.
-                            if (recipe.Contains(purchase.ItemId))
-                            {
-                                int lastid = tfpurchases.FindLastIndex(p => p.ItemId == purchase.ItemId);
-                                if (lastid != -1)
-                                {
-                                    tfpurchases.RemoveAt(lastid);
-                                }
-                            }
+            //                if (lastPurchase == null || lastPurchase.Consumed)
+            //                    break;
 
-                            break;
-                        }
-                    }
-                });
+            //                // List all recipe components of the last purchase.
+            //                List<int> recipe = new List<int>() { lastPurchase.Id };
+            //                for (int i = 0; i < recipe.Count; ++i)
+            //                {
+            //                    var recipeitem = StaticDataStore.Items.Items[recipe[i]];
+            //                    if (recipeitem.From != null)
+            //                    {
+            //                        var fromids = recipeitem.From.Select(idstring => int.Parse(idstring)).Distinct().Where(id => !recipe.Contains(id));
+            //                        recipe.AddRange(fromids);
+            //                    }
+            //                }
 
-                // Process into tree
-                // Filter out consumables
-                // NOTE: total biscuit of rejuvenation isn't marked as a consumable.
-                var purchaseList = tfpurchases.Where(purchase => !StaticDataStore.Items.Items[purchase.ItemId].Consumed).ToList();
-                purchaseTree.Merge(purchaseList);
-            });
+            //                // If this destroy id matches any components, remove it (the latest) from purchases.
+            //                if (recipe.Contains(purchase.ItemId))
+            //                {
+            //                    int lastid = tfpurchases.FindLastIndex(p => p.ItemId == purchase.ItemId);
+            //                    if (lastid != -1)
+            //                    {
+            //                        tfpurchases.RemoveAt(lastid);
+            //                    }
+            //                }
 
-            // Print purchase tree
-            string tree = purchaseTree.PrintTree();
-            Console.WriteLine(tree);
+            //                break;
+            //            }
+            //        }
+            //    });
 
-            var treejson = JsonConvert.SerializeObject(purchaseTree, Formatting.Indented);
+            //    // Process into tree
+            //    // Filter out consumables
+            //    // NOTE: total biscuit of rejuvenation isn't marked as a consumable.
+            //    var purchaseList = tfpurchases.Where(purchase => !StaticDataStore.Items.Items[purchase.ItemId].Consumed).ToList();
+            //    purchaseTree.Merge(purchaseList);
+            //});
 
-            var bestpath = purchaseTree.GetBestPath().ToList();
-            var bestpathstring = string.Join(Environment.NewLine, bestpath.Select(n => n.ToString()));
+            //// Print purchase tree
+            //string tree = purchaseTree.PrintTree();
+            //Console.WriteLine(tree);
+
+            //var treejson = JsonConvert.SerializeObject(purchaseTree, Formatting.Indented);
+
+            //var bestpath = purchaseTree.GetBestPath().ToList();
+            //var bestpathstring = string.Join(Environment.NewLine, bestpath.Select(n => n.ToString()));
+
+            #endregion
+
+            // Serialize all purchase stats
+            string json = JsonConvert.SerializeObject(championPurchaseStats);
 
             // Complete
             Console.WriteLine();

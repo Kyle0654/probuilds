@@ -151,6 +151,17 @@ namespace ProBuilds.Match
         public Dictionary<int, TeamState> Teams;
 
         public Dictionary<int, int> ParticipantMap;
+        
+        #region Helper Properties
+
+        public int TotalKills { get { return Teams.Sum(team => team.Value.Champions.Sum(champion => champion.Value.Kills)); } }
+        public int TotalTowerKills { get { return Teams.Sum(team => team.Value.TowersDestroyed); } }
+        public int TotalTowerKillsByType(TowerType type)
+        {
+            return Teams.Sum(team => team.Value.TowerTypesDestroyed.ContainsKey(type) ? team.Value.TowerTypesDestroyed[type] : 0);
+        }
+
+        #endregion
 
         public GameStateTracker()
         {
@@ -161,7 +172,6 @@ namespace ProBuilds.Match
         public GameStateTracker(MatchDetail match)
         {
             // TODO: track champion lanes/roles/etc.
-
             Teams = match.Teams.ToDictionary(
                 t => t.TeamId,
                 t => new TeamState(t.TeamId,
