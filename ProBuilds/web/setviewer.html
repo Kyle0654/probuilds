@@ -1,0 +1,327 @@
+<html>
+	<head>
+		<title>Pro Item Sets</title>
+		<style>
+			#root {
+				display: flex;
+				flex-direction: row;
+				flex-wrap: no-wrap;
+				justify-content: center;
+				align-items: stretch;
+				
+				height: 600px;
+			}
+			
+			#footer, #root {
+				width: 1200px;
+				
+				margin: auto;
+			}
+			
+			#footer {
+				margin-top: 16px;
+				text-align: center;
+			}
+			
+			#sets {
+				overflow-y: scroll;
+				
+				display: flex;
+				flex-direction: column;
+				flex-wrap: no-wrap;
+				justify-content: flex-start;
+				align-items: flex-start;
+				
+				flex: 0 0 main-size;
+			}
+			
+			#sets > a {
+				display: block;
+			}
+			
+			#setviewer {
+				overflow-y: scroll;
+
+				margin: 0px 16px;
+				
+				flex: 1 0;
+			}
+			
+			#settext {
+				width: 400px;
+				overflow:none;
+				
+				flex: 0 0 main-size;
+				
+				display: flex;
+				flex-direction: column;
+				flex-wrap: no-wrap;
+				justify-content: flex-start;
+				align-items: flex-start;
+			}
+			
+			#settext > * {
+				flex: 0 0;
+			}
+			
+			#settextarea {
+				width: 100%;
+				resize: none;
+				
+				flex: 1;
+			}
+			
+			.set.title {
+				font-weight: bold;
+				font-size:1.2em;
+			}
+		
+			.block.container {
+				border: 1px solid black;
+				padding: 2px;
+			}
+			
+			.block.title {
+				display: block;
+				font-weight: bold;
+				background: #ccc;
+				
+				margin: 1px;
+				padding: 1px;
+			}
+			
+			.block.itemcontainer {
+				display: block;
+				display: flex;
+				
+				flex-direction: row;
+				flex-wrap: wrap;
+				justify-content: flex-start;
+				align-items: flex-start;
+				
+				margin: 1px;
+			}
+			
+			.block.item {
+				border: 1px solid #ccc;
+				display: inline-block;
+				
+				text-align: center;
+				font-size: 0.8em;
+				
+				margin: 1px;
+			}
+				
+			img.item { width:32px; height:32px; }
+			img.champion { width:32px; height:32px; }
+		</style>
+		<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+		<script type="text/javascript">
+			var setmanifest = undefined;
+			var champions = undefined;
+			var items = undefined;
+			
+			var setsdiv = undefined;
+			var setviewerdiv = undefined;
+			var settextarea = undefined;
+			var setfilename = undefined;
+			var setdownload = undefined;
+			var set = undefined;
+		
+			var loadinghref = undefined;
+			
+			var currenthash = undefined;
+			
+			var imguri = 'http://ddragon.leagueoflegends.com/cdn/{version}/img/{group}/{filename}'
+		
+			function getimg( version, group, filename ) {
+				return imguri.replace( '{version}', version ).replace( '{group}', group ).replace( '{filename}', filename );
+			}
+		
+			function getitem( id ) {
+				return $.extend( true, items.basic, items.data[id] );
+			}
+			
+			function getchampion( key ) {
+				return champions.data[ key ];
+			}
+			
+			// TODO: use sprites
+			function getitemimg( id ) {
+				var item = getitem( id );
+				return '<img class="item" alt="' + item.name + '" title="' + item.name + '" src="' + getimg( items.version, item.image.group, item.image.full ) + '" />';
+			}
+			
+			function getchampionimg( key ) {
+				var champion = getchampion( key );
+				return '<img class="champion" alt="' + champion.name + '" title="' + champion.name + '" src="' + getimg( champions.version, champion.image.group, champion.image.full ) + '" />';
+			}
+		
+			function gethash() {
+				if ( window.location.hash == undefined )
+				{
+					return undefined;
+				}
+					
+				return window.location.hash.substring( 1 );
+			}
+			
+			function handlehash() {
+				var newhash = gethash();
+				
+				if ( currenthash == newhash )
+					return;
+				
+				currenthash = newhash;
+				
+				if ( currenthash == undefined ) {
+					setviewerdiv.empty();
+					settextarea.val();
+					setdownload.empty();
+					setdownload.attr('href',undefined);
+				} else {
+					var a = $('a.set.link').filter( function () { return $( this ).attr( 'name' ) == currenthash; } ).first();
+					if ( a != undefined ) {
+						loadset( currenthash, a.attr( 'href' ) );
+					}
+				}
+			}
+			
+			$( window ).on( 'hashchange', handlehash );
+		
+			function getblockhtml( block ) {
+				var blockhtml = '';
+				
+				blockhtml += '<span class="block title">' + block.type + '</span>';
+				
+				blockhtml += '<div class="block itemcontainer">';
+				$.each( block.items, function( i, item ) {
+					if ( i != 0 ) {
+						if (block.recMath == true) {						
+							blockhtml += ( i < block.items.length - 1 ) ? ' + ' : ' -&gt; ';
+						} else {
+							blockhtml += ' ';
+						}
+					}
+					
+					blockhtml += '<div class="block item">' + getitemimg( item.id ) + '<br/>' + item.count + '</div>';
+				});
+				
+				blockhtml += '</div>';
+				
+				return '<div class="block container">' + blockhtml + '</div>';
+			}
+		
+			function loadset( champion, href ) {
+				loadinghref = href;
+				$.getJSON( href, function( data ) {
+					if ( loadinghref != href )
+					{
+						return;
+					}
+					
+					setviewerdiv.empty();
+					
+					set = data;
+					
+					// Create set display
+					var title = '<span class="set title">' + set.title + '</span>';
+					setviewerdiv.append( title );
+					
+					$.each( data.blocks, function( i, block ) {
+						var blockhtml = getblockhtml( block );
+						setviewerdiv.append( blockhtml );
+					});
+					
+					// Set text area display
+					var jsonstr = JSON.stringify( set, null, 2 );
+					settextarea.val( jsonstr );
+					
+					// Set filename
+					setfilename.text( href.substring( setmanifest.root.length ) );
+					
+					// Set download link
+					setdownload.attr( 'href', href );
+					
+					// Set hash
+					if ( gethash() != champion ) {
+						window.location.hash = champion;
+						currenthash = champion;
+					}
+				});
+			}
+		
+			function initializesets() {
+				setsdiv.empty();
+				setviewerdiv.empty();
+				
+				// Create links
+				var allsets = $.map( setmanifest.sets, function( value, index ) {
+					return { 'key': index, 'set': value };
+				});
+				allsets.sort( function( a, b ) { return getchampion( a.key ).name.localeCompare( getchampion( b.key ).name ) } );
+				
+				$.each( allsets, function( i, setdata ) {
+					var champkey = setdata.key;
+					var seturi = setdata.set;
+				
+					var champion = getchampion( champkey );
+					setsdiv.append( '<a name="' + champkey + '" class="set link" href="' + seturi + '">' + getchampionimg( champkey ) + ' ' + champion.name + '</a>' );
+				});
+				
+				setsdiv.find( 'a' ).click( function() {
+					var champion = $( this ).attr( 'name' );
+					var href = $( this ).attr( 'href' );
+					loadset( champion, href );
+					return false;
+				});
+			}
+			
+			// Thin wrapper so we can change init sequence easily
+			function init() {
+				initChampions();
+			}
+			
+			function initChampions() {
+				$.getJSON( 'champions.json', function( data ) {
+					champions = data;
+				}).done(initItems);
+			}
+			
+			function initItems() {
+				$.getJSON( 'items.json', function( data ) {
+					items = data;
+				}).done(initManifest);
+			}
+			
+			function initManifest() {
+				$.getJSON( 'setmanifest.json', function( data ) {
+					setmanifest = data;
+					initializesets();
+					handlehash();
+				});
+			}
+		
+			$( function() {
+				setsdiv = $( '#sets' );
+				setviewerdiv = $( '#setviewer' );
+				settextarea = $( '#settextarea' );
+				setfilename = $( '#setfilename' );
+				setdownload = $( '#setdownload' );
+				init();
+			});
+		</script>
+	</head>
+	<body>
+		<div id="root">
+			<div id="sets"></div>
+			<div id="setviewer"></div>
+			<div id="settext">
+				<span id="setfilename"></span>
+				<a id="setdownload">Download</a>
+				<textarea id="settextarea" readonly></textarea>
+			</div>
+		</div>
+		<div id="footer">Pro Item Sets isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends © Riot Games, Inc.</div>
+	</body>
+</html>

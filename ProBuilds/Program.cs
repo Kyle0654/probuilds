@@ -8,6 +8,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -295,11 +296,80 @@ namespace ProBuilds
 
             #endregion
 
+            // Generate item sets
             Dictionary<int, ItemSet> itemSets = new Dictionary<int, ItemSet>();
-            ItemSetGenerator.generateAll(championPurchaseStats, 50.0f, out itemSets);
+            ItemSetGenerator.generateAll(championPurchaseStats, 0.3f, out itemSets);
+
+            // Write all sets to disk
+            string itemSetRoot = "itemsets";
+            string webDataRoot = "web";
+
+            string webItemSetRoot = Path.Combine(webDataRoot, itemSetRoot);
+
+            // Create web directory if it doesn't exist
+            if (!Directory.Exists(webDataRoot))
+                Directory.CreateDirectory(webDataRoot);
+
+            // Clear old item sets
+            if (Directory.Exists(webItemSetRoot))
+                Directory.Delete(webItemSetRoot, true);
+
+            Directory.CreateDirectory(webItemSetRoot);
+
+            // Write item sets
+            var setfiles = itemSets.AsParallel().WithDegreeOfParallelism(4).Select(kvp =>
+            {
+                int championId = kvp.Key;
+                string championKey = StaticDataStore.Champions.Keys[championId];
+                if (championKey == null)
+                    return new { Champion = "", File = "" };
+
+                var champion = StaticDataStore.Champions.Champions[championKey];
+                if (champion == null)
+                    return new { Champion = "", File = "" };
+
+                string webpath = Path.Combine(itemSetRoot, championKey);
+                string path = Path.Combine(webDataRoot, webpath);
+                if (!Directory.Exists(path))
+                    Directory.CreateDirectory(path);
+
+                string filename = championKey + "_ProBuilds_" + "Always" + ".json";
+                string file = Path.Combine(path, filename);
+                string setJson = JsonConvert.SerializeObject(kvp.Value);
+                File.WriteAllText(file, setJson);
+
+                return new { Champion = champion.Key, File = Path.Combine(webpath, filename) };
+            }).ToDictionary(s => s.Champion, s => s.File);
+
+
+            // Write static data
+            string championsfile = Path.Combine(webDataRoot, "champions.json");
+            string itemsfile = Path.Combine(webDataRoot, "items.json");
+
+            string championsjson = JsonConvert.SerializeObject(StaticDataStore.Champions);
+            string itemsjson = JsonConvert.SerializeObject(StaticDataStore.Items);
+
+            File.WriteAllText(championsfile, championsjson);
+            File.WriteAllText(itemsfile, itemsjson);
+
+            // Write item set manifest
+            var manifest = new { root = itemSetRoot + Path.DirectorySeparatorChar, sets = setfiles };
+
+            string manifestfile = Path.Combine(webDataRoot, "setmanifest.json");
+            string manifestjson = JsonConvert.SerializeObject(manifest);
+
+            File.WriteAllText(manifestfile, manifestjson);
+
+            // Zip all item sets
+            string zipSource = webItemSetRoot;
+            string zipOutputFilename =  Path.Combine(webDataRoot, "allprosets.zip");
+            if (File.Exists(zipOutputFilename))
+                File.Delete(zipOutputFilename);
+
+            ZipFile.CreateFromDirectory(zipSource, zipOutputFilename);
 
             // Serialize all purchase stats
-            string json = JsonConvert.SerializeObject(championPurchaseStats);
+            //string json = JsonConvert.SerializeObject(championPurchaseStats);
 
             // Complete
             Console.WriteLine();

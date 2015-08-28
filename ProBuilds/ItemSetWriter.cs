@@ -353,24 +353,31 @@ namespace ProBuilds
 
         private static void addItemsWithinMin(Dictionary<int, List<float>> items, ref List<ItemSet.Item> itemList, float min)
         {
-            //Loop through all the items
-            foreach (KeyValuePair<int, List<float>> entry in items)
+            List<ItemSet.Item> itemsInBlock = items.Select(entry => new ItemSet.Item(entry.Key.ToString())
             {
-                //Loop through each item count and percentage
-                int count = 0;
-                foreach (float percentage in entry.Value)
-                {
-                    count++;
+                count = entry.Value.Where(percentage => percentage >= min).Count()
+            }).Where(item => item.count > 0).ToList();
 
-                    //Only add the items that are within the percentage
-                    if (percentage >= min)
-                    {
-                        ItemSet.Item item = new ItemSet.Item(entry.Key.ToString());
-                        item.count = count;
-                        itemList.Add(item);
-                    }
-                }
-            }
+            itemList.AddRange(itemsInBlock);
+
+            ////Loop through all the items
+            //foreach (KeyValuePair<int, List<float>> entry in items)
+            //{
+            //    //Loop through each item count and percentage
+            //    int count = 0;
+            //    foreach (float percentage in entry.Value)
+            //    {
+            //        count++;
+
+            //        //Only add the items that are within the percentage
+            //        if (percentage >= min)
+            //        {
+            //            ItemSet.Item item = new ItemSet.Item(entry.Key.ToString());
+            //            item.count = count;
+            //            itemList.Add(item);
+            //        }
+            //    }
+            //}
         }
     }
 
