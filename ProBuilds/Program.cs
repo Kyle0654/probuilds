@@ -295,6 +295,9 @@ namespace ProBuilds
 
             #endregion
 
+            Dictionary<int, ItemSet> itemSets = new Dictionary<int, ItemSet>();
+            ItemSetGenerator.generateAll(championPurchaseStats, 50.0f, out itemSets);
+
             // Serialize all purchase stats
             string json = JsonConvert.SerializeObject(championPurchaseStats);
 

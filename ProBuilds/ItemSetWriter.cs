@@ -5,9 +5,18 @@ using System.Collections.Generic;
 using Newtonsoft.Json.Converters;
 using System.Runtime.Serialization;
 using System.IO;
+using ProBuilds.BuildPath;
+using RiotSharp.StaticDataEndpoint;
+using System.Threading.Tasks;
+using System.Linq;
 
 namespace ProBuilds
 {
+    static class ItemSetNaming
+    {
+        public const string ToolName = "PBIS";
+    }
+
     /// <summary>
     /// Structure that holds everything in an item set to write out to JSON
     /// </summary>
@@ -208,6 +217,163 @@ namespace ProBuilds
         }
     }
 
+    static class ItemSetGenerator
+    {
+        /// <summary>
+        /// Map to set in item sets generated
+        /// </summary>
+        public static ItemSet.Map map = ItemSet.Map.SummonersRift;
+        /// <summary>
+        /// Mode to set in item sets generated
+        /// </summary>
+        public static ItemSet.Mode mode = ItemSet.Mode.any;
+
+        /// <summary>
+        /// Type to set in items sets generated
+        /// </summary>
+        public static ItemSet.Type type = ItemSet.Type.Custom;
+
+        /// <summary>
+        /// Priority to use when generating item sets (should this be sorted above all other item sets)
+        /// </summary>
+        public static bool priority = false;
+
+        /// <summary>
+        /// Descending order to sort this item set (anything less than 0 will use the rounded passed min percentage value for this)
+        /// </summary>
+        public static int sortRank = -1;
+
+        /// <summary>
+        /// Generate item sets for all champions (threaded)
+        /// </summary>
+        /// <param name="championPurchaseStats">Dictionary of champion id's and stats for purchase items for those champions</param>
+        /// <param name="min">Minimum percentage to include the items for</param>
+        /// <param name="itemSets">Dictionary to store item sets in, key is champion id</param>
+        /// <returns>True if we were able to generate item sets, false if not</returns>
+        public static bool generateAll(Dictionary<int, ChampionPurchaseStats> championPurchaseStats, float min, out Dictionary<int, ItemSet> itemSets)
+        {
+            //Create a dictionary we can use in threading
+            System.Collections.Concurrent.ConcurrentDictionary<int, ItemSet> threadedSets = new System.Collections.Concurrent.ConcurrentDictionary<int, ItemSet>();
+
+            //Loop through all our champions we have stats for and generate sets for them
+            Parallel.ForEach(championPurchaseStats, entry =>
+            {
+                //Generate a set for this champion
+                ItemSet itemSet = new ItemSet();
+
+                if (generate(entry.Key, entry.Value, min, out itemSet))
+                {
+                    threadedSets.TryAdd(entry.Key, itemSet);
+                }
+            });
+
+            itemSets = new Dictionary<int, ItemSet>(threadedSets);
+
+            return (itemSets.Count > 0);
+        }
+
+        public static bool generate(int championId, ChampionPurchaseStats stats, float min, out ItemSet itemSet)
+        {
+            //Lookup the champion
+            ChampionStatic championInfo = StaticDataStore.Champions.Champions.First().Value;
+            string name = "";
+            bool champIssue = false;
+            if (StaticDataStore.Champions.Keys.TryGetValue(championId, out name))
+            {
+                if (!StaticDataStore.Champions.Champions.TryGetValue(name, out championInfo))
+                {
+                    champIssue = true;
+                }
+            }
+            else
+            {
+                champIssue = true;
+            }
+
+            if(champIssue)
+            {
+                itemSet = new ItemSet();
+                return false;
+            }
+
+            //Come up with an item set title
+            itemSet.title = championInfo.Key + " " + (min * 100).ToString() + " " + ItemSetNaming.ToolName;
+
+            //Add a nice description of how this was generated
+            itemSet.description = "Item set generated using " + stats.MatchCount.ToString() + " matches and only taking items used at least " + (min * 100).ToString() + "% of the time.";
+
+            //Fill out a bunch of other stuff that is the same for this tool
+            itemSet.type = type;
+            itemSet.map = map;
+            itemSet.mode = mode;
+            itemSet.priority = priority;
+            itemSet.sortrank = sortRank < 0 ? (int)Math.Round(min * 100) : sortRank;
+
+            //Create the blocks
+            itemSet.blocks = new List<ItemSet.Block>(4);
+
+            //Create the starting items block
+            ItemSet.Block blockStart = new ItemSet.Block("Starting Items");
+            blockStart.items = new List<ItemSet.Item>();
+            addItemsWithinMin(stats.Start.Items, ref blockStart.items, min);
+            if (blockStart.items.Count > 0)
+            {
+                itemSet.blocks.Add(blockStart);
+            }
+
+            //Create the Earlygame items block
+            ItemSet.Block blockEarly = new ItemSet.Block("Early Items");
+            blockEarly.items = new List<ItemSet.Item>();
+            addItemsWithinMin(stats.Early.Items, ref blockEarly.items, min);
+            if (blockEarly.items.Count > 0)
+            {
+                itemSet.blocks.Add(blockEarly);
+            }
+
+            //Create the Midgame items block
+            ItemSet.Block blockMid = new ItemSet.Block("Midgame Items");
+            blockMid.items = new List<ItemSet.Item>();
+            addItemsWithinMin(stats.Mid.Items, ref blockMid.items, min);
+            if (blockMid.items.Count > 0)
+            {
+                itemSet.blocks.Add(blockMid);
+            }
+
+            //Create the Lategame items block
+            ItemSet.Block blockLate = new ItemSet.Block("Lategame Items");
+            blockLate.items = new List<ItemSet.Item>();
+            addItemsWithinMin(stats.Late.Items, ref blockLate.items, min);
+            if (blockLate.items.Count > 0)
+            {
+                itemSet.blocks.Add(blockLate);
+            }
+
+            return true;
+        }
+
+        private static void addItemsWithinMin(Dictionary<int, List<float>> items, ref List<ItemSet.Item> itemList, float min)
+        {
+            //Loop through all the items
+            foreach (KeyValuePair<int, List<float>> entry in items)
+            {
+                //Loop through each item count and percentage
+                int count = 0;
+                foreach (float percentage in entry.Value)
+                {
+                    count++;
+
+                    //Only add the items that are within the percentage
+                    if (percentage >= min)
+                    {
+                        ItemSet.Item item = new ItemSet.Item(entry.Key.ToString());
+                        item.count = count;
+                        itemList.Add(item);
+                    }
+                }
+            }
+        }
+    }
+
     static class ItemSetWriter
     {
         /// <summary>
@@ -224,11 +390,6 @@ namespace ProBuilds
         /// Full file path to league of legends install directory
         /// </summary>
         private static string LeagueOfLegendsPath = "C:\\Riot Games\\League of Legends\\";
-
-        /// <summary>
-        /// Prepend this to all file names written
-        /// </summary>
-        private const string FileNamePrefix = "PB";
 
         /// <summary>
         /// File extention to use for the file
@@ -307,7 +468,7 @@ namespace ProBuilds
             var atr = map.GetAttribute<EnumMemberAttribute>();
             string mapAbreviation = atr.Value.ToString();
 
-            return FileNamePrefix + championKey + mapAbreviation + name + FileExtention;
+            return ItemSetNaming.ToolName + championKey + mapAbreviation + name + FileExtention;
         }
 
         /// <summary>
