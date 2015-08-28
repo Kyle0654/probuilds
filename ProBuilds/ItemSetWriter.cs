@@ -215,6 +215,23 @@ namespace ProBuilds
                 Console.WriteLine("No item set found");
             }
         }
+
+        public static void testGenerator(Dictionary<int, ChampionPurchaseStats> championPurchaseStats)
+        {
+            //Dictionary<int, ItemSet> itemSets = new Dictionary<int, ItemSet>();
+            //ItemSetGenerator.generateAll(championPurchaseStats, 0.5f, out itemSets);
+            ChampionStatic champInfo;
+            if (StaticDataStore.Champions.Champions.TryGetValue("Ashe", out champInfo))
+            {
+                ChampionPurchaseStats champStats;
+                if (championPurchaseStats.TryGetValue(champInfo.Id, out champStats))
+                {
+                    ItemSet itemSet;
+                    ItemSetGenerator.generate(champStats.ChampionId, champStats, 0.5f, out itemSet);
+                    ItemSetWriter.writeOutItemSet(itemSet, champInfo.Key);
+                }
+            }
+        }
     }
 
     static class ItemSetGenerator
