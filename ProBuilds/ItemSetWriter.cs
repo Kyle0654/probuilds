@@ -9,9 +9,13 @@ using ProBuilds.BuildPath;
 using RiotSharp.StaticDataEndpoint;
 using System.Threading.Tasks;
 using System.Linq;
+using Newtonsoft.Json.Serialization;
 
 namespace ProBuilds
 {
+    /// <summary>
+    /// This is used in item set naming conventions
+    /// </summary>
     static class ItemSetNaming
     {
         public const string ToolName = "PBIS";
@@ -32,10 +36,15 @@ namespace ProBuilds
             [JsonProperty("count")]
             public int count;
 
+            [JsonExtraField]
+            [JsonProperty("percentage")]
+            public float percentage;
+
             public Item(string id = "")
             {
                 this.id = id;
                 this.count = 0;
+                this.percentage = 0.0f;
             }
         }
 
@@ -123,6 +132,7 @@ namespace ProBuilds
         [JsonProperty("title")]
         public string title;
 
+        [JsonExtraField]
         [JsonProperty("description")]
         public string description;
 
@@ -181,9 +191,10 @@ namespace ProBuilds
             block.showIfSummonerSpell = "";
             block.hideIfSummonerSpell = "";
             block.items = new List<ItemSet.Item>();
-            ItemSet.Item item;
+            ItemSet.Item item = new ItemSet.Item();
             item.id = "1001";
             item.count = 2;
+            item.percentage = 0.54f;
             block.items.Add(item);
             set.blocks.Add(block);
 
@@ -428,9 +439,9 @@ namespace ProBuilds
         private static string getItemSetDirectory(string championKey = "")
         {
             if (championKey == "")
-                return LeagueOfLegendsPath + GlobalSubPath;
+                return Path.Combine(LeagueOfLegendsPath, GlobalSubPath);
             else
-                return LeagueOfLegendsPath +  string.Format(ChampionSubPath, championKey);
+                return Path.Combine(LeagueOfLegendsPath, string.Format(ChampionSubPath, championKey));
         }
         
         /// <summary>
@@ -501,33 +512,36 @@ namespace ProBuilds
         /// </summary>
         /// <param name="itemSet">Item set to write out to a json file</param>
         /// <param name="championKey">Key value for the champion you want the item set directory for or empty if global</param>
+        /// <param name="name">Unique name to append to this ItemSet</param>
+        /// <param name="writeExtraFields">True to write out any fields taged as extra, false to not</param>
+        /// <param name="subDir">Sub directory to write to, if empty use League of Legends directory</param>
         /// <returns>True if item set doesn't exists and was written, false if item set exists already</returns>
-        public static bool writeOutItemSet(ItemSet itemSet, string championKey = "", string name = "")
+        public static bool writeOutItemSet(ItemSet itemSet, string championKey = "", string name = "", bool writeExtraFields = true, string subDir = "")
         {
+            //Setup our custom serialization settings
+            JsonSerializerSettings settings = new JsonSerializerSettings();
+            settings.Formatting = Formatting.Indented;
+            if (!writeExtraFields)
+                settings.ContractResolver = new ExtraFieldContractResolver();
+
             //Convert our item set to json
-            string JSON = JsonConvert.SerializeObject(itemSet, Formatting.Indented);
+            string JSON = JsonConvert.SerializeObject(itemSet, settings);
 
             //Get the directory we are going to write out to
-            string itemSetDir = getItemSetDirectory(championKey);
+            string itemSetDir = (String.IsNullOrEmpty(subDir)) ? getItemSetDirectory(championKey) : Path.Combine(subDir, championKey == "" ? "Global" : championKey) + Path.DirectorySeparatorChar;
 
             //Make sure the directory exists
             ensureDirectory(itemSetDir);
 
             //Create our unique file name for the system
-            string fileName = itemSetDir + getItemSetFileName(championKey, itemSet.map, name);
+            string fileName = Path.Combine(itemSetDir, getItemSetFileName(championKey, itemSet.map, name));
 
             //Check if we already have this file
             if (File.Exists(fileName))
                 return false;
 
             //Write out the file
-            using (FileStream file = File.Create(fileName))
-            {
-                using (StreamWriter writer = new StreamWriter(file))
-                {
-                    writer.Write(JSON);
-                }
-            }
+            File.WriteAllText(fileName, JSON);
 
             return true;
         }
@@ -538,32 +552,26 @@ namespace ProBuilds
         /// <param name="championKey">Key value for the champion you want the item set directory for or empty if global</param>
         /// <param name="map">Map this item set is for (used in naming convention)</param>
         /// <param name="name">Name for this item set file (used in naming convention)</param>
+        /// <param name="subDir">Sub directory to read from, if empty use League of Legends directory</param>
         /// <returns>Item set if file was found or null if not</returns>
-        public static Nullable<ItemSet> readInItemSet(string championKey = "", ItemSet.Map map = ItemSet.Map.SummonersRift, string name = "")
+        public static Nullable<ItemSet> readInItemSet(string championKey = "", ItemSet.Map map = ItemSet.Map.SummonersRift, string name = "", string subDir = "")
         {
             //Get the directory we are going to write out to
-            string itemSetDir = getItemSetDirectory(championKey);
-
-            //Make sure the directory exists
-            ensureDirectory(itemSetDir);
+            string itemSetDir = (String.IsNullOrEmpty(subDir)) ? getItemSetDirectory(championKey) : Path.Combine(subDir, championKey == "" ? "Global" : championKey) + Path.DirectorySeparatorChar;
 
             //Create our unique file name for the system
-            string fileName = itemSetDir + getItemSetFileName(championKey, map, name);
+            string fileName = Path.Combine(itemSetDir, getItemSetFileName(championKey, map, name));
 
             //Make sure we have this file
             if (!File.Exists(fileName))
                 return null;
 
             //Read in the file
-            using (FileStream file = File.OpenRead(fileName))
-            {
-                using (StreamReader reader = new StreamReader(file))
-                {
-                    string JSON = reader.ReadToEnd();
-                    ItemSet itemSet = JsonConvert.DeserializeObject<ItemSet>(JSON);
-                    return itemSet;
-                }
-            }
+            string JSON = File.ReadAllText(fileName);
+
+            //Convert the JSON string to an object
+            ItemSet itemSet = JsonConvert.DeserializeObject<ItemSet>(JSON);
+            return itemSet;
         }
     }
 }
