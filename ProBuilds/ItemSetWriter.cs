@@ -383,29 +383,33 @@ namespace ProBuilds
         {
             List<ItemSet.Item> itemsInBlock = items.Select(entry => new ItemSet.Item(entry.Key.ToString())
             {
-                count = entry.Value.Where(percentage => percentage >= min).Count()
+                count = entry.Value.Where(percentage => percentage >= min).Count(),
+                percentage = entry.Value.LastOrDefault(percentage => percentage >= min)
             }).Where(item => item.count > 0).ToList();
 
             itemList.AddRange(itemsInBlock);
 
-            ////Loop through all the items
-            //foreach (KeyValuePair<int, List<float>> entry in items)
-            //{
-            //    //Loop through each item count and percentage
-            //    int count = 0;
-            //    foreach (float percentage in entry.Value)
-            //    {
-            //        count++;
+            /*
+            //Loop through all the items
+            foreach (KeyValuePair<int, List<float>> entry in items)
+            {
+                //Loop through each item count and percentage
+                int count = 0;
+                foreach (float percentage in entry.Value)
+                {
+                    count++;
 
-            //        //Only add the items that are within the percentage
-            //        if (percentage >= min)
-            //        {
-            //            ItemSet.Item item = new ItemSet.Item(entry.Key.ToString());
-            //            item.count = count;
-            //            itemList.Add(item);
-            //        }
-            //    }
-            //}
+                    //Only add the items that are within the percentage
+                    if (percentage >= min)
+                    {
+                        ItemSet.Item item = new ItemSet.Item(entry.Key.ToString());
+                        item.count = count;
+                        item.percentage = percentage;
+                        itemList.Add(item);
+                    }
+                }
+            }
+            */
         }
     }
 
