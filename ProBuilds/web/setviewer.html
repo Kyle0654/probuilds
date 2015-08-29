@@ -187,12 +187,18 @@
 				}
 			}
 			
-			$( window ).on( 'hashchange', handlehash );
+			$(window).on('hashchange', handlehash);
 		
 			function getblockhtml( block ) {
-				var blockhtml = '';
+			    var blockhtml = '';
+
+			    var cost = 0;
+			    $.each(block.items, function (i, item) {
+			        var itemInfo = getitem(item.id);
+			        cost += itemInfo.gold.total;
+			    });
 				
-				blockhtml += '<span class="block title">' + block.type + '</span>';
+			    blockhtml += '<span class="block title">' + block.type + ' (' + cost + ' Gold)</span>';
 				
 				blockhtml += '<div class="block itemcontainer">';
 				$.each( block.items, function( i, item ) {
@@ -204,7 +210,7 @@
 						}
 					}
 					
-					blockhtml += '<div class="block item">' + getitemimg( item.id ) + '<br/>' + item.count + '</div>';
+					blockhtml += '<div class="block item">' + getitemimg(item.id) + '<br/>' + item.count + '<br/>' + (item.percentage * 100).toFixed(0) + '%</div>';
 				});
 				
 				blockhtml += '</div>';
