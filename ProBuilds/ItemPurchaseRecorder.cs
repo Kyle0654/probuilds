@@ -58,12 +58,22 @@ namespace ProBuilds
     {
         public int ChampionId { get; private set; }
         public long MatchId { get; private set; }
+
+        public Lane Lane { get; private set; }
+        public bool IsWinner { get; private set; }
+        public bool HasSmite { get; private set; }
+
         public List<ItemPurchaseInformation> ItemPurchases { get; private set; }
 
-        public ChampionMatchItemPurchases(int championId, long matchId)
+        public ChampionMatchItemPurchases(int championId, long matchId, Lane lane, bool isWinner, bool hasSmite)
         {
             ChampionId = championId;
             MatchId = matchId;
+
+            Lane = lane;
+            IsWinner = isWinner;
+            HasSmite = hasSmite;
+
             ItemPurchases = new List<ItemPurchaseInformation>();
         }
     }
@@ -74,7 +84,6 @@ namespace ProBuilds
 
         public int MaxDegreeOfParallelism { get { return 8; } }
 
-        //public ConcurrentDictionary<int, ConcurrentDictionary<long, ChampionMatchItemPurchases>> ItemPurchases = new ConcurrentDictionary<int, ConcurrentDictionary<long, ChampionMatchItemPurchases>>();
         public ConcurrentDictionary<int, ChampionPurchaseTracker> ChampionPurchaseTrackers = new ConcurrentDictionary<int, ChampionPurchaseTracker>();
 
         private static EventType[] ItemEventTypes = new EventType[] { EventType.ItemPurchased, EventType.ItemDestroyed, EventType.ItemSold, EventType.ItemUndo };
@@ -86,22 +95,19 @@ namespace ProBuilds
 
             Dictionary<int, ChampionMatchItemPurchases> championPurchases = new Dictionary<int, ChampionMatchItemPurchases>();
 
+            var smiteSpell = StaticDataStore.SummonerSpells.SummonerSpells["SummonerSmite"];
+
             // Get all champions in this match, and initialize recording structures
             foreach (Participant participant in match.Participants)
             {
                 int championId = participant.ChampionId;
 
-                //// Get the match listing for this champion (create if it doesn't exist)
-                //ConcurrentDictionary<long, ChampionMatchItemPurchases> championMatches =
-                //    ItemPurchases.GetOrAdd(championId, id => new ConcurrentDictionary<long, ChampionMatchItemPurchases>());
-
                 //// Create a new match listing and add it to listings
-                ChampionMatchItemPurchases championItemPurchases = new ChampionMatchItemPurchases(championId, match.MatchId);
-                //if (!championMatches.TryAdd(match.MatchId, championItemPurchases))
-                //{
-                //    // We have already tried to process this match for some reason...
-                //    throw new ArgumentException("Match has already been processed.", "match");
-                //}
+                Lane lane = participant.Timeline.Lane;
+                bool hasSmite = (participant.Spell1Id == smiteSpell.Id || participant.Spell2Id == smiteSpell.Id);
+                bool isWinner = participant.Stats.Winner;
+
+                ChampionMatchItemPurchases championItemPurchases = new ChampionMatchItemPurchases(championId, match.MatchId, lane, isWinner, hasSmite);
 
                 // For recording, we'll index by participant id so we don't have to look up champion id every time
                 championPurchases.Add(participant.ParticipantId, championItemPurchases);

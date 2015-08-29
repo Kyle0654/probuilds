@@ -157,6 +157,12 @@
 				return '<img class="champion" alt="' + champion.name + '" title="' + champion.name + '" src="' + getimg( champions.version, champion.image.group, champion.image.full ) + '" />';
 			}
 		
+			function getSetKey( set ) {
+			    return set.ChampionId + '_'
+                    + set.Lane + '_'
+                    + (set.HasSmite ? "Smite" : "NoSmite");
+			}
+
 			function gethash() {
 				if ( window.location.hash == undefined )
 				{
@@ -192,7 +198,17 @@
 			function getblockhtml( block ) {
 				var blockhtml = '';
 				
-				blockhtml += '<span class="block title">' + block.type + '</span>';
+				var blocktitle = block.type;
+				if ( block.showIfSummonerSpell )
+				{
+				    blocktitle += ' spell(' + block.showIfSummonerSpell + ')';
+				}
+				if ( block.hideIfSummonerSpell )
+				{
+				    blocktitle += ' nospell(' + block.hideIfSummonerSpell + ')';
+				}
+
+				blockhtml += '<span class="block title">' + blocktitle + '</span>';
 				
 				blockhtml += '<div class="block itemcontainer">';
 				$.each( block.items, function( i, item ) {
@@ -212,7 +228,7 @@
 				return '<div class="block container">' + blockhtml + '</div>';
 			}
 		
-			function loadset( champion, href ) {
+			function loadset( sethash, href ) {
 				loadinghref = href;
 				$.getJSON( href, function( data ) {
 					if ( loadinghref != href )
@@ -244,9 +260,9 @@
 					setdownload.attr( 'href', href );
 					
 					// Set hash
-					if ( gethash() != champion ) {
-						window.location.hash = champion;
-						currenthash = champion;
+					if ( gethash() != sethash ) {
+					    window.location.hash = sethash;
+					    currenthash = sethash;
 					}
 				});
 			}
@@ -257,22 +273,35 @@
 				
 				// Create links
 				var allsets = $.map( setmanifest.sets, function( value, index ) {
-					return { 'key': index, 'set': value };
+				    return {
+				        'championkey': index,
+				        'sets': $.map( value, function ( setdata, key ) {
+				            return {
+				                'key': setdata.Key,
+				                'file': setdata.File
+				            }
+				        })
+				    };
 				});
-				allsets.sort( function( a, b ) { return getchampion( a.key ).name.localeCompare( getchampion( b.key ).name ) } );
+
+				allsets.sort( function( a, b ) { return getchampion( a.championkey ).name.localeCompare( getchampion( b.championkey ).name ) } );
 				
-				$.each( allsets, function( i, setdata ) {
-					var champkey = setdata.key;
-					var seturi = setdata.set;
+				$.each( allsets, function ( i, setsdata ) {
+				    var champkey = setsdata.championkey;
+				    var champion = getchampion( champkey );
+				    var champimg = getchampionimg( champkey );
+				    $.each( setsdata.sets, function( j, setdata ) {
+                        var setkey = getSetKey( setdata.key );
+					    var seturi = setdata.file;
 				
-					var champion = getchampion( champkey );
-					setsdiv.append( '<a name="' + champkey + '" class="set link" href="' + seturi + '">' + getchampionimg( champkey ) + ' ' + champion.name + '</a>' );
+					    setsdiv.append( '<a name="' + setkey + '" class="set link" href="' + seturi + '">' + champimg + ' ' + champion.name + '</a>' );
+				    });
 				});
 				
 				setsdiv.find( 'a' ).click( function() {
-					var champion = $( this ).attr( 'name' );
+					var sethash = $( this ).attr( 'name' );
 					var href = $( this ).attr( 'href' );
-					loadset( champion, href );
+					loadset( sethash, href );
 					return false;
 				});
 			}

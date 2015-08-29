@@ -44,6 +44,11 @@ namespace ProBuilds
         private TestSynchronizer testSynchronizer = new TestSynchronizer();
         // </TEST>
 
+        /// <summary>
+        /// The number of matches processed by this pipeline.
+        /// </summary>
+        public long MatchCount { get { return testSynchronizer.Count; } }
+
         public MatchPipeline(RiotApi riotApi, RiotQuerySettings querySettings, IMatchDetailProcessor matchDetailProcessor)
         {
             api = riotApi;

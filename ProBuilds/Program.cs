@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using ProBuilds.BuildPath;
+using ProBuilds.SetBuilder;
 using RiotSharp;
 using RiotSharp.LeagueEndpoint;
 using RiotSharp.MatchEndpoint;
@@ -164,9 +165,10 @@ namespace ProBuilds
             pipeline.Process();
 
             // Get stats
-            Dictionary<int, ChampionPurchaseStats> championPurchaseStats = purchaseRecorder.ChampionPurchaseTrackers.ToDictionary(
-                kvp => kvp.Value.ChampionId,
-                kvp => kvp.Value.GetStats());
+            var championPurchaseStats =
+                purchaseRecorder.ChampionPurchaseTrackers.ToDictionary(
+                    kvp => kvp.Value.ChampionId,
+                    kvp => kvp.Value.GetStats());
 
             #region Test Code
 
@@ -297,8 +299,7 @@ namespace ProBuilds
             #endregion
 
             // Generate item sets
-            Dictionary<int, ItemSet> itemSets = new Dictionary<int, ItemSet>();
-            ItemSetGenerator.generateAll(championPurchaseStats, 0.3f, out itemSets);
+            Dictionary<PurchaseSetKey, ItemSet> itemSets = ItemSetGenerator.generateAll(championPurchaseStats, SetBuilderSettings.ItemMinimumPurchasePercentage);
 
             // Write all sets to disk
             string itemSetRoot = "itemsets";
@@ -316,30 +317,123 @@ namespace ProBuilds
 
             Directory.CreateDirectory(webItemSetRoot);
 
-            // Write item sets
-            var setfiles = itemSets.AsParallel().WithDegreeOfParallelism(4).Select(kvp =>
+            // Filter out sets we don't consider valid
+            long minMatchCount = Math.Min(
+                SetBuilderSettings.FilterMatchMinCount,
+                (long)((double)pipeline.MatchCount * SetBuilderSettings.FilterMatchMinPercentage));
+
+            var filteredSets = itemSets.Where(kvp =>
             {
-                int championId = kvp.Key;
-                string championKey = StaticDataStore.Champions.Keys[championId];
-                if (championKey == null)
-                    return new { Champion = "", File = "" };
+                // Filter out item sets without a minimum percentage of matches
+                if (kvp.Value.MatchCount < minMatchCount)
+                    return false;
 
-                var champion = StaticDataStore.Champions.Champions[championKey];
-                if (champion == null)
-                    return new { Champion = "", File = "" };
+                // While smiteless-jungle might be viable, from the data this looks more like a
+                // situation where the champion in question was roaming a lot, so the lane was
+                // misidentified as jungle. We'll just exclude these for now.
+                if (SetBuilderSettings.FilterExcludeNoSmiteJungle &&
+                    kvp.Value.SetKey.Lane == Lane.Jungle && !kvp.Value.SetKey.HasSmite)
+                    return false;
 
-                string webpath = Path.Combine(itemSetRoot, championKey);
+                // All other sets are fine
+                return true;
+            });
+
+            // Group sets
+            var groupedSets = filteredSets.GroupBy(kvp => kvp.Key.ChampionId);
+
+            // Combine sets
+            var smiteSpell = StaticDataStore.SummonerSpells.SummonerSpells["SummonerSmite"];
+
+            var combinedSets = groupedSets.Select(g =>
+            {
+                // If there aren't two sets, or the two sets both do or don't have smite
+                if (g.Count() != 2 ||
+                    !(g.Any(set => set.Key.HasSmite) && g.Any(set => set.Key.HasSmite)))
+                    return new { Key = g.Key, Sets = g.ToList() };
+
+                var seta = g.ElementAt(0);
+                var setb = g.ElementAt(1);
+
+                var smiteset = seta.Key.HasSmite ? seta : setb;
+                var nosmiteset = seta.Key.HasSmite ? setb : seta;
+
+                // Mark set blocks as smite required or not required
+                smiteset.Value.blocks.ForEach(block => block.showIfSummonerSpell = smiteSpell.Key);
+                nosmiteset.Value.blocks.ForEach(block => block.hideIfSummonerSpell = smiteSpell.Key);
+
+                // Combine into smite set
+                smiteset.Value.MatchCount = Math.Max(smiteset.Value.MatchCount, nosmiteset.Value.MatchCount);
+                smiteset.Value.blocks.AddRange(nosmiteset.Value.blocks);
+
+                // Return combined block
+                return new { Key = g.Key, Sets = Enumerable.Repeat(smiteset, 1).ToList() };
+            }).ToList();
+
+            // Generate names for item sets
+            var setsWithNames = combinedSets.SelectMany(g =>
+            {
+                var champion = StaticDataStore.Champions.GetChampionById(g.Key);
+
+                // Ensure the champion directoy exists
+                string webpath = Path.Combine(itemSetRoot, champion.Key);
                 string path = Path.Combine(webDataRoot, webpath);
                 if (!Directory.Exists(path))
                     Directory.CreateDirectory(path);
 
-                string filename = championKey + "_ProBuilds_" + "Always" + ".json";
-                string file = Path.Combine(path, filename);
-                string setJson = JsonConvert.SerializeObject(kvp.Value);
+                // If single item, just name it "Always"
+                if (g.Sets.Count() == 1)
+                {
+                    return Enumerable.Repeat(new
+                    {
+                        Name = champion.Key + "_ProBuilds_" + "Always" + ".json",
+                        WebPath = webpath,
+                        FilePath = path,
+                        Key = g.Sets.First().Key,
+                        Set = g.Sets.First().Value
+                    }, 1);
+                }
+
+                // Find differentiating fields
+                bool diffHasSmite = g.Sets.Any(kvp => kvp.Key.HasSmite != g.Sets.First().Key.HasSmite);
+                bool diffLane = g.Sets.Any(kvp => kvp.Key.Lane != g.Sets.First().Key.Lane);
+
+                // Create name for each based on differentiating fields
+                return g.Sets.Select(setkvp =>
+                {
+                    string name = "ProBuilds_" + champion.Key;
+
+                    if (diffLane)
+                        name += "_" +setkvp.Key.Lane.ToString();
+
+                    if (diffHasSmite)
+                        name += setkvp.Key.HasSmite ? "_Smite" : "_NoSmite";
+
+                    name += ".json";
+
+                    return new
+                    {
+                        Name = name,
+                        WebPath = webpath,
+                        FilePath = path,
+                        Key = setkvp.Key,
+                        Set = setkvp.Value
+                    };
+                });
+            }).ToList();
+
+            // Write item sets
+            var setfiles = setsWithNames.AsParallel().WithDegreeOfParallelism(4).Select(set =>
+            {
+                string filename = set.Name;
+                string file = Path.Combine(set.FilePath, filename);
+                string setJson = JsonConvert.SerializeObject(set.Set);
                 File.WriteAllText(file, setJson);
 
-                return new { Champion = champion.Key, File = Path.Combine(webpath, filename) };
-            }).ToDictionary(s => s.Champion, s => s.File);
+                return new { Key = set.Key, File = Path.Combine(set.WebPath, filename) };
+            }).GroupBy(set => set.Key.ChampionId).ToDictionary(
+                g => StaticDataStore.Champions.Keys[g.Key],
+                g => g.ToList());
 
 
             // Write static data

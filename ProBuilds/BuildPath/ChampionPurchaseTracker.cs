@@ -45,6 +45,51 @@ namespace ProBuilds.BuildPath
                 }
             }
         }
+
+        public static ItemCountTracker Combine(ItemCountTracker a, ItemCountTracker b)
+        {
+            ItemCountTracker tracker = new ItemCountTracker(a.ItemId);
+            lock (a.PerMatchCounts)
+            {
+                lock (b.PerMatchCounts)
+                {
+                    int count = Math.Max(a.PerMatchCounts.Count, b.PerMatchCounts.Count);
+                    for (int i = 0; i < count; ++i)
+                    {
+                        tracker.PerMatchCounts.Add(
+                            (a.PerMatchCounts.Count > i ? a.PerMatchCounts[i] : 0) +
+                            (b.PerMatchCounts.Count > i ? b.PerMatchCounts[i] : 0));
+                    }
+                }
+            }
+            return tracker;
+        }
+
+        public ItemCountTracker Combine(ItemCountTracker other)
+        {
+            return ItemCountTracker.Combine(this, other);
+        }
+
+        public ItemCountTracker Clone()
+        {
+            ItemCountTracker tracker = new ItemCountTracker(ItemId);
+            lock (PerMatchCounts)
+            {
+                tracker.PerMatchCounts.AddRange(PerMatchCounts);
+            }
+            return tracker;
+        }
+    }
+
+    /// <summary>
+    /// Purchase stats for an item.
+    /// </summary>
+    public class ItemPurchaseStats
+    {
+        /// <summary>
+        /// The percent of times this item was purchased
+        /// </summary>
+        public float Percentage;
     }
 
     /// <summary>
@@ -53,16 +98,22 @@ namespace ProBuilds.BuildPath
     public class PurchaseStats
     {
         /// <summary>
-        /// Item id and percent of times that item was bought.
+        /// Item id and stats for the number of times that item was bought.
         /// </summary>
         /// <example>
-        /// Items[3012][2] might return 0.2, meaning that in 20% of games, this champion buys a second item of this type during this stage.
+        /// Items[3012][2].Percentage might return 0.2, meaning that in 20% of games, this champion buys a second item of this type during this stage.
         /// </example>
-        public Dictionary<int, List<float>> Items;
+        public Dictionary<int, List<ItemPurchaseStats>> Items;
 
-        public PurchaseStats(ConcurrentDictionary<int, ItemCountTracker> purchases, int matchCount)
+        public PurchaseStats(ConcurrentDictionary<int, ItemCountTracker> purchases, long matchCount)
         {
-            Items = purchases.ToDictionary(kvp => kvp.Value.ItemId, kvp => kvp.Value.PerMatchCounts.Select(ct => (float)ct / (float)matchCount).ToList());
+            Items = purchases.ToDictionary(
+                kvp => kvp.Value.ItemId,
+                kvp => kvp.Value.PerMatchCounts.Select(ct => new ItemPurchaseStats()
+                {
+                    Percentage = (float)ct / (float)matchCount
+                }).ToList()
+            );
         }
     }
 
@@ -71,50 +122,105 @@ namespace ProBuilds.BuildPath
     /// </summary>
     public class ChampionPurchaseStats
     {
-        public int ChampionId;
-        public int MatchCount;
+        public PurchaseSetKey Key;
+
+        public int ChampionId { get { return Key.ChampionId; } }
+        public long MatchCount;
 
         public PurchaseStats Start;
         public PurchaseStats Early;
         public PurchaseStats Mid;
         public PurchaseStats Late;
 
-        public ChampionPurchaseStats(ChampionPurchaseTracker tracker)
+        public ChampionPurchaseStats(PurchaseSet set)
         {
-            ChampionId = tracker.ChampionId;
-            MatchCount = tracker.MatchCount;
-            Start = new PurchaseStats(tracker.StartPurchases, tracker.MatchCount);
-            Early = new PurchaseStats(tracker.EarlyPurchases, tracker.MatchCount);
-            Mid = new PurchaseStats(tracker.MidPurchases, tracker.MatchCount);
-            Late = new PurchaseStats(tracker.LatePurchases, tracker.MatchCount);
+            Key = set.Key;
+
+            MatchCount = set.MatchCount;
+            Start = new PurchaseStats(set.StartPurchases, set.MatchCount);
+            Early = new PurchaseStats(set.EarlyPurchases, set.MatchCount);
+            Mid = new PurchaseStats(set.MidPurchases, set.MatchCount);
+            Late = new PurchaseStats(set.LatePurchases, set.MatchCount);
         }
     }
 
     /// <summary>
-    /// Tracks purchases for a champion across multiple matches.
+    /// Key for a purchase set.
     /// </summary>
-    public class ChampionPurchaseTracker
+    /// <remarks>This key contains data that should significantly differentiate item purchases throughout a match.</remarks>
+    public class PurchaseSetKey
     {
         public int ChampionId { get; private set; }
+        public Lane Lane { get; private set; }
+        public bool HasSmite { get; private set; }
+
+        public PurchaseSetKey(ChampionMatchItemPurchases matchPurchases)
+        {
+            ChampionId = matchPurchases.ChampionId;
+            Lane = matchPurchases.Lane;
+            HasSmite = matchPurchases.HasSmite;
+
+            // Convert all "Bot" to "Bottom"
+            if (Lane == RiotSharp.MatchEndpoint.Lane.Bot)
+                Lane = RiotSharp.MatchEndpoint.Lane.Bottom;
+        }
+
+        #region Equality
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(this, obj))
+                return true;
+
+            if (obj == null)
+                return true;
+
+            if (!(obj is PurchaseSetKey))
+                return false;
+
+            PurchaseSetKey other = obj as PurchaseSetKey;
+
+            return
+                ChampionId == other.ChampionId &&
+                Lane == other.Lane &&
+                HasSmite == other.HasSmite;
+        }
+
+        public override int GetHashCode()
+        {
+            return Tuple.Create(ChampionId, Lane, HasSmite).GetHashCode();
+        }
+
+        #endregion
+
+        public override string ToString()
+        {
+            return string.Format("{0} {1} {2}",
+                StaticDataStore.Champions != null ?
+                    StaticDataStore.Champions.Champions[StaticDataStore.Champions.Keys[ChampionId]].Name :
+                    ChampionId.ToString(),
+                Lane.ToString(),
+                HasSmite ? "smite" : "no-smite");
+        }
+    }
+
+    /// <summary>
+    /// A set of purchases throughout a game.
+    /// </summary>
+    public class PurchaseSet
+    {
+        public PurchaseSetKey Key { get; private set; }
+
+        public long MatchCount = 0;
 
         public ConcurrentDictionary<int, ItemCountTracker> StartPurchases = new ConcurrentDictionary<int, ItemCountTracker>();
         public ConcurrentDictionary<int, ItemCountTracker> EarlyPurchases = new ConcurrentDictionary<int, ItemCountTracker>();
         public ConcurrentDictionary<int, ItemCountTracker> MidPurchases = new ConcurrentDictionary<int, ItemCountTracker>();
         public ConcurrentDictionary<int, ItemCountTracker> LatePurchases = new ConcurrentDictionary<int, ItemCountTracker>();
 
-        /// <summary>
-        /// Get stats for this champion's purchases.
-        /// </summary>
-        public ChampionPurchaseStats GetStats()
+        public PurchaseSet(PurchaseSetKey key)
         {
-            return new ChampionPurchaseStats(this);
-        }
-
-        public int MatchCount = 0;
-
-        public ChampionPurchaseTracker(int championId)
-        {
-            ChampionId = championId;
+            Key = key;
         }
 
         public void Process(ChampionMatchItemPurchases matchPurchases)
@@ -188,6 +294,83 @@ namespace ProBuilds.BuildPath
 
             // Increment match processed count
             Interlocked.Increment(ref MatchCount);
+        }
+
+        #region Combination
+
+        private static void Combine(ConcurrentDictionary<int, ItemCountTracker> a, ConcurrentDictionary<int, ItemCountTracker> b, ref ConcurrentDictionary<int, ItemCountTracker> set)
+        {
+            foreach (int key in a.Keys.Union(b.Keys))
+            {
+                ItemCountTracker at, bt;
+                bool ina = a.TryGetValue(key, out at);
+                bool inb = b.TryGetValue(key, out bt);
+                if (ina && inb)
+                {
+                    set.TryAdd(key, at.Combine(bt));
+                }
+                else if (!inb)
+                {
+                    set.TryAdd(key, at.Clone());
+                }
+                else if (!ina)
+                {
+                    set.TryAdd(key, bt.Clone());
+                }
+            }
+        }
+
+        public static PurchaseSet Combine(PurchaseSet a, PurchaseSet b)
+        {
+            PurchaseSet set = new PurchaseSet(null);
+            PurchaseSet.Combine(a.StartPurchases, b.StartPurchases, ref set.StartPurchases);
+            PurchaseSet.Combine(a.EarlyPurchases, b.EarlyPurchases, ref set.EarlyPurchases);
+            PurchaseSet.Combine(a.MidPurchases, b.MidPurchases, ref set.MidPurchases);
+            PurchaseSet.Combine(a.LatePurchases, b.LatePurchases, ref set.LatePurchases);
+            return set;
+        }
+
+        public PurchaseSet Combine(PurchaseSet other)
+        {
+            return PurchaseSet.Combine(this, other);
+        }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// Tracks purchases for a champion across multiple matches.
+    /// </summary>
+    public class ChampionPurchaseTracker
+    {
+        public int ChampionId { get; private set; }
+
+        /// <summary>
+        /// Purchase data sorted by important game data.
+        /// </summary>
+        public ConcurrentDictionary<PurchaseSetKey, PurchaseSet> PurchaseSets = new ConcurrentDictionary<PurchaseSetKey, PurchaseSet>();
+
+        /// <summary>
+        /// Get stats for this champion's purchases.
+        /// </summary>
+        public Dictionary<PurchaseSetKey, ChampionPurchaseStats> GetStats()
+        {
+            return PurchaseSets.ToDictionary(
+                kvp => kvp.Key,
+                kvp => new ChampionPurchaseStats(kvp.Value));
+        }
+
+        public ChampionPurchaseTracker(int championId)
+        {
+            ChampionId = championId;
+        }
+
+        public void Process(ChampionMatchItemPurchases matchPurchases)
+        {
+            // Create or get the purchase set for this match
+            PurchaseSetKey key = new PurchaseSetKey(matchPurchases);
+            PurchaseSet set = PurchaseSets.GetOrAdd(key, k => new PurchaseSet(k));
+            set.Process(matchPurchases);
         }
     }
 }

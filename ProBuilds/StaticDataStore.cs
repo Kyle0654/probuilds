@@ -12,6 +12,7 @@ namespace ProBuilds
     {
         public ChampionListStatic Champions { get; private set; }
         public ItemListStatic Items { get; private set; }
+        public SummonerSpellListStatic SummonerSpells { get; private set; }
         public Realm Realm { get; private set; }
         public RiotVersion Version { get; private set; }
         public Region Region { get; private set; }
@@ -24,6 +25,7 @@ namespace ProBuilds
 
             Champions = riotStaticApi.GetChampions(region, ChampionData.all);
             Items = riotStaticApi.GetItems(region, ItemData.all);
+            SummonerSpells = riotStaticApi.GetSummonerSpells(region, SummonerSpellData.all);
         }
     }
 
@@ -50,6 +52,11 @@ namespace ProBuilds
         public static ItemListStatic Items { get; private set; }
 
         /// <summary>
+        /// The most current summoner spell list from NA.
+        /// </summary>
+        public static SummonerSpellListStatic SummonerSpells { get; private set; }
+
+        /// <summary>
         /// Initialize the static data store by pulling down all data we care about.
         /// </summary>
         public static void Initialize(StaticRiotApi riotStaticApi)
@@ -61,24 +68,25 @@ namespace ProBuilds
             // Get data for all valid realms
             Realms = filteredRealms.ToDictionary(realm => realm.Region, realm => new RealmStaticData(riotStaticApi, realm.Realm, realm.Region));
 
-            if (Realms.ContainsKey(Region.na))
-            {
-                // Try to find NA data for strings
-                Champions = Realms[Region.na].Champions;
-                Items = Realms[Region.na].Items;
-            }
-            else
+            // Try getting NA data if available
+            RealmStaticData primaryrealm;
+            if (!Realms.TryGetValue(Region.na, out primaryrealm))
             {
                 // Try to find an english realm
-                var realm = Realms.FirstOrDefault(kvp => kvp.Value.Realm.L.Contains("en")).Value;
+                primaryrealm = Realms.FirstOrDefault(kvp => kvp.Value.Realm.L.Contains("en")).Value;
                 
                 // If we can't find english data, give up and just choose the first realm
-                if (realm == null)
-                    realm = Realms.FirstOrDefault().Value;
+                if (primaryrealm == null)
+                    primaryrealm = Realms.FirstOrDefault().Value;
 
-                Champions = realm.Champions;
-                Items = realm.Items;
+                // If there are no realms, just return
+                if (primaryrealm == null)
+                    return;    
             }
+
+            Champions = primaryrealm.Champions;
+            Items = primaryrealm.Items;
+            SummonerSpells = primaryrealm.SummonerSpells;
         }
     }
 }

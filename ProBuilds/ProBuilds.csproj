@@ -62,6 +62,7 @@
     <Compile Include="ItemPurchaseRecorder.cs" />
     <Compile Include="ItemSetWriter.cs" />
     <Compile Include="ChampionPurchaseDirectory.cs" />
+    <Compile Include="SetBuilder\SetBuilderSettings.cs" />
     <Compile Include="MatchDirectory.cs" />
     <Compile Include="MatchPipeline.cs" />
     <Compile Include="Match\GameStateTracker.cs" />

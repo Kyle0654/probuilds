@@ -17,5 +17,18 @@ namespace ProBuilds
         {
             return (ex.Message.StartsWith("429") || ex.Message.StartsWith("5"));
         }
+
+        public static ChampionStatic GetChampionById(this ChampionListStatic list, int id)
+        {
+            string key;
+            if (!list.Keys.TryGetValue(id, out key))
+                return null;
+
+            ChampionStatic champion;
+            if (!list.Champions.TryGetValue(key, out champion))
+                return null;
+
+            return champion;
+        }
     }
 }

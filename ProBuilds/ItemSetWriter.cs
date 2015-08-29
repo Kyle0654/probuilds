@@ -21,10 +21,10 @@ namespace ProBuilds
     /// Structure that holds everything in an item set to write out to JSON
     /// </summary>
     [JsonObject(MemberSerialization.OptIn)]
-    public struct ItemSet
+    public class ItemSet
     {
         [JsonObject(MemberSerialization.OptIn)]
-        public struct Item
+        public class Item
         {
             [JsonProperty("id")]
             public string id;
@@ -40,7 +40,7 @@ namespace ProBuilds
         }
 
         [JsonObject(MemberSerialization.OptIn)]
-        public struct Block
+        public class Block
         {
             [JsonProperty("type")]
             public string type;
@@ -120,6 +120,12 @@ namespace ProBuilds
             Dominion
         }
 
+        [JsonIgnore]
+        public PurchaseSetKey SetKey;
+
+        [JsonProperty("matchcount")]
+        public long MatchCount;
+
         [JsonProperty("title")]
         public string title;
 
@@ -149,6 +155,9 @@ namespace ProBuilds
 
         public ItemSet(string title = "")
         {
+            this.SetKey = null;
+            this.MatchCount = 0;
+
             this.title = title;
             this.description = "";
             this.type = Type.Custom;
@@ -164,7 +173,8 @@ namespace ProBuilds
     {
         private static ItemSet createTestSet(string championKey = "Ashe")
         {
-            ItemSet set;
+            ItemSet set = new ItemSet();
+
             set.title = championKey + " ProBuilds";
             set.description = "this is a test.";
             set.type = ItemSet.Type.Custom;
@@ -173,7 +183,7 @@ namespace ProBuilds
             set.priority = false;
             set.sortrank = 0;
             set.blocks = new List<ItemSet.Block>();
-            ItemSet.Block block;
+            ItemSet.Block block = new ItemSet.Block();
             block.type = "Starting Out";
             block.recMath = true;
             block.minSummonerLevel = -1;
@@ -181,7 +191,7 @@ namespace ProBuilds
             block.showIfSummonerSpell = "";
             block.hideIfSummonerSpell = "";
             block.items = new List<ItemSet.Item>();
-            ItemSet.Item item;
+            ItemSet.Item item = new ItemSet.Item();
             item.id = "1001";
             item.count = 2;
             block.items.Add(item);
@@ -203,11 +213,11 @@ namespace ProBuilds
         {
             string championKey = "Ashe";
             ItemSet.Map map = ItemSet.Map.SummonersRift;
-            Nullable<ItemSet> set = ItemSetWriter.readInItemSet(championKey, map, "Boots");
+            ItemSet set = ItemSetWriter.readInItemSet(championKey, map, "Boots");
 
             if(set != null)
             {
-                string JSON = JsonConvert.SerializeObject(set.Value, Formatting.Indented);
+                string JSON = JsonConvert.SerializeObject(set, Formatting.Indented);
                 Console.Write(JSON);
             }
             else
@@ -216,22 +226,22 @@ namespace ProBuilds
             }
         }
 
-        public static void testGenerator(Dictionary<int, ChampionPurchaseStats> championPurchaseStats)
-        {
-            //Dictionary<int, ItemSet> itemSets = new Dictionary<int, ItemSet>();
-            //ItemSetGenerator.generateAll(championPurchaseStats, 0.5f, out itemSets);
-            ChampionStatic champInfo;
-            if (StaticDataStore.Champions.Champions.TryGetValue("Ashe", out champInfo))
-            {
-                ChampionPurchaseStats champStats;
-                if (championPurchaseStats.TryGetValue(champInfo.Id, out champStats))
-                {
-                    ItemSet itemSet;
-                    ItemSetGenerator.generate(champStats.ChampionId, champStats, 0.5f, out itemSet);
-                    ItemSetWriter.writeOutItemSet(itemSet, champInfo.Key);
-                }
-            }
-        }
+        //public static void testGenerator(Dictionary<int, ChampionPurchaseStats> championPurchaseStats)
+        //{
+        //    //Dictionary<int, ItemSet> itemSets = new Dictionary<int, ItemSet>();
+        //    //ItemSetGenerator.generateAll(championPurchaseStats, 0.5f, out itemSets);
+        //    ChampionStatic champInfo;
+        //    if (StaticDataStore.Champions.Champions.TryGetValue("Ashe", out champInfo))
+        //    {
+        //        ChampionPurchaseStats champStats;
+        //        if (championPurchaseStats.TryGetValue(champInfo.Id, out champStats))
+        //        {
+        //            ItemSet itemSet;
+        //            ItemSetGenerator.generate(champStats.ChampionId, champStats, 0.5f, out itemSet);
+        //            ItemSetWriter.writeOutItemSet(itemSet, champInfo.Key);
+        //        }
+        //    }
+        //}
     }
 
     static class ItemSetGenerator
@@ -267,54 +277,36 @@ namespace ProBuilds
         /// <param name="min">Minimum percentage to include the items for</param>
         /// <param name="itemSets">Dictionary to store item sets in, key is champion id</param>
         /// <returns>True if we were able to generate item sets, false if not</returns>
-        public static bool generateAll(Dictionary<int, ChampionPurchaseStats> championPurchaseStats, float min, out Dictionary<int, ItemSet> itemSets)
+        public static Dictionary<PurchaseSetKey, ItemSet> generateAll(Dictionary<int, Dictionary<PurchaseSetKey, ChampionPurchaseStats>> championPurchaseStats, float min)
         {
-            //Create a dictionary we can use in threading
+            // Create a dictionary we can use in threading
             System.Collections.Concurrent.ConcurrentDictionary<int, ItemSet> threadedSets = new System.Collections.Concurrent.ConcurrentDictionary<int, ItemSet>();
 
-            //Loop through all our champions we have stats for and generate sets for them
-            Parallel.ForEach(championPurchaseStats, entry =>
-            {
-                //Generate a set for this champion
-                ItemSet itemSet = new ItemSet();
+            // Extract all sets (keys include champion id, so we don't really need the outer key)
+            var allstats = championPurchaseStats.SelectMany(statDictionary => statDictionary.Value).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-                if (generate(entry.Key, entry.Value, min, out itemSet))
-                {
-                    threadedSets.TryAdd(entry.Key, itemSet);
-                }
-            });
+            // Loop through all our champions we have stats for and generate sets for them
+            var itemSets = allstats.AsParallel().WithDegreeOfParallelism(4).ToDictionary(
+                kvp => kvp.Key,
+                kvp => generate(kvp.Key, kvp.Value, min)
+            );
 
-            itemSets = new Dictionary<int, ItemSet>(threadedSets);
-
-            return (itemSets.Count > 0);
+            return itemSets;
         }
 
-        public static bool generate(int championId, ChampionPurchaseStats stats, float min, out ItemSet itemSet)
+        public static ItemSet generate(PurchaseSetKey setKey, ChampionPurchaseStats stats, float min)
         {
             //Lookup the champion
-            ChampionStatic championInfo = StaticDataStore.Champions.Champions.First().Value;
-            string name = "";
-            bool champIssue = false;
-            if (StaticDataStore.Champions.Keys.TryGetValue(championId, out name))
-            {
-                if (!StaticDataStore.Champions.Champions.TryGetValue(name, out championInfo))
-                {
-                    champIssue = true;
-                }
-            }
-            else
-            {
-                champIssue = true;
-            }
+            var championKey = StaticDataStore.Champions.Keys[setKey.ChampionId];
+            var championInfo = StaticDataStore.Champions.Champions[championKey];
 
-            if(champIssue)
-            {
-                itemSet = new ItemSet();
-                return false;
-            }
+            // Create the set and key it
+            ItemSet itemSet = new ItemSet();
+            itemSet.SetKey = setKey;
+            itemSet.MatchCount = stats.MatchCount;
 
             //Come up with an item set title
-            itemSet.title = championInfo.Key + " " + (min * 100).ToString() + " " + ItemSetNaming.ToolName;
+            itemSet.title = championInfo.Name + " " + (min * 100).ToString() + " " + ItemSetNaming.ToolName;
 
             //Add a nice description of how this was generated
             itemSet.description = "Item set generated using " + stats.MatchCount.ToString() + " matches and only taking items used at least " + (min * 100).ToString() + "% of the time.";
@@ -326,56 +318,37 @@ namespace ProBuilds
             itemSet.priority = priority;
             itemSet.sortrank = sortRank < 0 ? (int)Math.Round(min * 100) : sortRank;
 
-            //Create the blocks
-            itemSet.blocks = new List<ItemSet.Block>(4);
-
-            //Create the starting items block
-            ItemSet.Block blockStart = new ItemSet.Block("Starting Items");
-            blockStart.items = new List<ItemSet.Item>();
-            addItemsWithinMin(stats.Start.Items, ref blockStart.items, min);
-            if (blockStart.items.Count > 0)
+            // Block info
+            var blockData = new []
             {
-                itemSet.blocks.Add(blockStart);
-            }
+                new { Name = "Starting Items", Items = stats.Start.Items },
+                new { Name = "Early Items", Items = stats.Early.Items },
+                new { Name = "Midgame Items", Items = stats.Mid.Items },
+                new { Name = "Lategame Items", Items = stats.Late.Items }
+            };
 
-            //Create the Earlygame items block
-            ItemSet.Block blockEarly = new ItemSet.Block("Early Items");
-            blockEarly.items = new List<ItemSet.Item>();
-            addItemsWithinMin(stats.Early.Items, ref blockEarly.items, min);
-            if (blockEarly.items.Count > 0)
-            {
-                itemSet.blocks.Add(blockEarly);
-            }
+            // Create blocks and filter to non-empty blocks
+            var blocks = blockData.Select(blockInfo =>
+                new ItemSet.Block(blockInfo.Name)
+                {
+                    items = getItemsWithinMin(blockInfo.Items, min)
+                })
+                .Where(block => block.items.Count > 0);
 
-            //Create the Midgame items block
-            ItemSet.Block blockMid = new ItemSet.Block("Midgame Items");
-            blockMid.items = new List<ItemSet.Item>();
-            addItemsWithinMin(stats.Mid.Items, ref blockMid.items, min);
-            if (blockMid.items.Count > 0)
-            {
-                itemSet.blocks.Add(blockMid);
-            }
+            // Add blocks to item set
+            itemSet.blocks = new List<ItemSet.Block>(blocks);
 
-            //Create the Lategame items block
-            ItemSet.Block blockLate = new ItemSet.Block("Lategame Items");
-            blockLate.items = new List<ItemSet.Item>();
-            addItemsWithinMin(stats.Late.Items, ref blockLate.items, min);
-            if (blockLate.items.Count > 0)
-            {
-                itemSet.blocks.Add(blockLate);
-            }
-
-            return true;
+            return itemSet;
         }
 
-        private static void addItemsWithinMin(Dictionary<int, List<float>> items, ref List<ItemSet.Item> itemList, float min)
+        private static List<ItemSet.Item> getItemsWithinMin(Dictionary<int, List<ItemPurchaseStats>> items, float min)
         {
             List<ItemSet.Item> itemsInBlock = items.Select(entry => new ItemSet.Item(entry.Key.ToString())
             {
-                count = entry.Value.Where(percentage => percentage >= min).Count()
+                count = entry.Value.Where(item => item.Percentage >= min).Count()
             }).Where(item => item.count > 0).ToList();
 
-            itemList.AddRange(itemsInBlock);
+            return itemsInBlock;
 
             ////Loop through all the items
             //foreach (KeyValuePair<int, List<float>> entry in items)
@@ -539,7 +512,7 @@ namespace ProBuilds
         /// <param name="map">Map this item set is for (used in naming convention)</param>
         /// <param name="name">Name for this item set file (used in naming convention)</param>
         /// <returns>Item set if file was found or null if not</returns>
-        public static Nullable<ItemSet> readInItemSet(string championKey = "", ItemSet.Map map = ItemSet.Map.SummonersRift, string name = "")
+        public static ItemSet readInItemSet(string championKey = "", ItemSet.Map map = ItemSet.Map.SummonersRift, string name = "")
         {
             //Get the directory we are going to write out to
             string itemSetDir = getItemSetDirectory(championKey);
