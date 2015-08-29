@@ -210,7 +210,7 @@
 						}
 					}
 					
-					blockhtml += '<div class="block item">' + getitemimg(item.id) + '<br/>' + item.count + '<br/>' + (item.percentage * 100).toFixed(0) + '%</div>';
+					blockhtml += '<div class="block item">' + getitemimg(item.id) + '<br/>' + item.count + '<br/>' + (item.hasOwnProperty("percentage") ? ((item.percentage * 100).toFixed(0) + '%') : '') + '</div>';
 				});
 				
 				blockhtml += '</div>';
