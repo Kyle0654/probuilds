@@ -299,7 +299,7 @@ namespace ProBuilds
             #endregion
 
             // Generate item sets
-            Dictionary<PurchaseSetKey, ItemSet> itemSets = ItemSetGenerator.generateAll(championPurchaseStats, SetBuilderSettings.ItemMinimumPurchasePercentage);
+            Dictionary<PurchaseSetKey, ItemSet> itemSets = ItemSetGenerator.generateAll(championPurchaseStats);
 
             // Write all sets to disk
             string itemSetRoot = "itemsets";
@@ -350,7 +350,7 @@ namespace ProBuilds
                 // If there aren't two sets, or the two sets both do or don't have smite
                 if (g.Count() != 2 ||
                     !(g.Any(set => set.Key.HasSmite) && g.Any(set => set.Key.HasSmite)))
-                    return new { Key = g.Key, Sets = g.ToList() };
+                    return new { Key = g.Key, Sets = g.ToList(), HasOtherLane = false, OtherLane = Lane.Bot };
 
                 var seta = g.ElementAt(0);
                 var setb = g.ElementAt(1);
@@ -367,7 +367,7 @@ namespace ProBuilds
                 smiteset.Value.blocks.AddRange(nosmiteset.Value.blocks);
 
                 // Return combined block
-                return new { Key = g.Key, Sets = Enumerable.Repeat(smiteset, 1).ToList() };
+                return new { Key = g.Key, Sets = Enumerable.Repeat(smiteset, 1).ToList(), HasOtherLane = true, OtherLane = nosmiteset.Key.Lane };
             }).ToList();
 
             // Generate names for item sets
@@ -381,19 +381,6 @@ namespace ProBuilds
                 if (!Directory.Exists(path))
                     Directory.CreateDirectory(path);
 
-                // If single item, just name it "Always"
-                if (g.Sets.Count() == 1)
-                {
-                    return Enumerable.Repeat(new
-                    {
-                        Name = champion.Key + "_ProBuilds_" + "Always" + ".json",
-                        WebPath = webpath,
-                        FilePath = path,
-                        Key = g.Sets.First().Key,
-                        Set = g.Sets.First().Value
-                    }, 1);
-                }
-
                 // Find differentiating fields
                 bool diffHasSmite = g.Sets.Any(kvp => kvp.Key.HasSmite != g.Sets.First().Key.HasSmite);
                 bool diffLane = g.Sets.Any(kvp => kvp.Key.Lane != g.Sets.First().Key.Lane);
@@ -401,19 +388,49 @@ namespace ProBuilds
                 // Create name for each based on differentiating fields
                 return g.Sets.Select(setkvp =>
                 {
-                    string name = "ProBuilds_" + champion.Key;
+                    string filename = "ProBuilds_" + champion.Key;
+                    string title = "";
 
-                    if (diffLane)
-                        name += "_" +setkvp.Key.Lane.ToString();
+                    // Always handle combined sets specially
+                    if (g.Sets.Count == 1 && g.HasOtherLane == true)
+                    {
+                        title += g.OtherLane.ToString() + " / " + g.Sets.First().Key.Lane.ToString();
+                        filename += "_" + g.OtherLane.ToString() + "_" + g.Sets.First().Key.Lane.ToString();
+                    }
+                    else
+                    {
+                        // We always write out jungle
+                        // We always write out the lane if it has smite (to differentiate it from jungle)
+                        if (g.Sets.Count == 1 ||
+                            diffLane ||
+                            (setkvp.Key.Lane == Lane.Jungle && !setkvp.Value.blocks.Any(block => block.showIfSummonerSpell != "")) ||
+                            setkvp.Key.HasSmite)
+                        {
+                            title += setkvp.Key.Lane.ToString();
+                            filename += "_" + setkvp.Key.Lane.ToString();
+                        }
 
-                    if (diffHasSmite)
-                        name += setkvp.Key.HasSmite ? "_Smite" : "_NoSmite";
+                        if (diffHasSmite)
+                        {
+                            // Add smite information to title if jungling without smite, or taking smite without jungling
+                            if ((setkvp.Key.HasSmite && setkvp.Key.Lane != Lane.Jungle) ||
+                                (!setkvp.Key.HasSmite && setkvp.Key.Lane == Lane.Jungle))
+                            {
+                                title += setkvp.Key.HasSmite ? " with Smite" : " without Smite";
+                            }
 
-                    name += ".json";
+                            filename += setkvp.Key.HasSmite ? "_Smite" : "_NoSmite";
+                        }
+                    }
+
+                    // Set the title
+                    setkvp.Value.title = title;
+
+                    filename += ".json";
 
                     return new
                     {
-                        Name = name,
+                        Name = filename,
                         WebPath = webpath,
                         FilePath = path,
                         Key = setkvp.Key,
@@ -430,7 +447,7 @@ namespace ProBuilds
                 string setJson = JsonConvert.SerializeObject(set.Set);
                 File.WriteAllText(file, setJson);
 
-                return new { Key = set.Key, File = Path.Combine(set.WebPath, filename) };
+                return new { Key = set.Key, File = Path.Combine(set.WebPath, filename), Title = set.Set.title };
             }).GroupBy(set => set.Key.ChampionId).ToDictionary(
                 g => StaticDataStore.Champions.Keys[g.Key],
                 g => g.ToList());
@@ -439,12 +456,15 @@ namespace ProBuilds
             // Write static data
             string championsfile = Path.Combine(webDataRoot, "champions.json");
             string itemsfile = Path.Combine(webDataRoot, "items.json");
+            string summonerspellsfile = Path.Combine(webDataRoot, "summonerspells.json");
 
             string championsjson = JsonConvert.SerializeObject(StaticDataStore.Champions);
             string itemsjson = JsonConvert.SerializeObject(StaticDataStore.Items);
+            string summonerspellsjson = JsonConvert.SerializeObject(StaticDataStore.SummonerSpells);
 
             File.WriteAllText(championsfile, championsjson);
             File.WriteAllText(itemsfile, itemsjson);
+            File.WriteAllText(summonerspellsfile, summonerspellsjson);
 
             // Write item set manifest
             var manifest = new { root = itemSetRoot + Path.DirectorySeparatorChar, sets = setfiles };

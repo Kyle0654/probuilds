@@ -9,9 +9,14 @@ using ProBuilds.BuildPath;
 using RiotSharp.StaticDataEndpoint;
 using System.Threading.Tasks;
 using System.Linq;
+using Newtonsoft.Json.Serialization;
+using ProBuilds.SetBuilder;
 
 namespace ProBuilds
 {
+    /// <summary>
+    /// This is used in item set naming conventions
+    /// </summary>
     static class ItemSetNaming
     {
         public const string ToolName = "PBIS";
@@ -32,10 +37,15 @@ namespace ProBuilds
             [JsonProperty("count")]
             public int count;
 
+            [JsonExtraField]
+            [JsonProperty("percentage")]
+            public float percentage;
+
             public Item(string id = "")
             {
                 this.id = id;
                 this.count = 0;
+                this.percentage = 0.0f;
             }
         }
 
@@ -129,6 +139,7 @@ namespace ProBuilds
         [JsonProperty("title")]
         public string title;
 
+        [JsonExtraField]
         [JsonProperty("description")]
         public string description;
 
@@ -194,6 +205,7 @@ namespace ProBuilds
             ItemSet.Item item = new ItemSet.Item();
             item.id = "1001";
             item.count = 2;
+            item.percentage = 0.54f;
             block.items.Add(item);
             set.blocks.Add(block);
 
@@ -242,7 +254,7 @@ namespace ProBuilds
         //        }
         //    }
         //}
-    }
+                }
 
     static class ItemSetGenerator
     {
@@ -274,10 +286,8 @@ namespace ProBuilds
         /// Generate item sets for all champions (threaded)
         /// </summary>
         /// <param name="championPurchaseStats">Dictionary of champion id's and stats for purchase items for those champions</param>
-        /// <param name="min">Minimum percentage to include the items for</param>
-        /// <param name="itemSets">Dictionary to store item sets in, key is champion id</param>
         /// <returns>True if we were able to generate item sets, false if not</returns>
-        public static Dictionary<PurchaseSetKey, ItemSet> generateAll(Dictionary<int, Dictionary<PurchaseSetKey, ChampionPurchaseStats>> championPurchaseStats, float min)
+        public static Dictionary<PurchaseSetKey, ItemSet> generateAll(Dictionary<int, Dictionary<PurchaseSetKey, ChampionPurchaseStats>> championPurchaseStats)
         {
             // Create a dictionary we can use in threading
             System.Collections.Concurrent.ConcurrentDictionary<int, ItemSet> threadedSets = new System.Collections.Concurrent.ConcurrentDictionary<int, ItemSet>();
@@ -288,13 +298,13 @@ namespace ProBuilds
             // Loop through all our champions we have stats for and generate sets for them
             var itemSets = allstats.AsParallel().WithDegreeOfParallelism(4).ToDictionary(
                 kvp => kvp.Key,
-                kvp => generate(kvp.Key, kvp.Value, min)
+                kvp => generate(kvp.Key, kvp.Value)
             );
 
             return itemSets;
         }
 
-        public static ItemSet generate(PurchaseSetKey setKey, ChampionPurchaseStats stats, float min)
+        public static ItemSet generate(PurchaseSetKey setKey, ChampionPurchaseStats stats)
         {
             //Lookup the champion
             var championKey = StaticDataStore.Champions.Keys[setKey.ChampionId];
@@ -306,32 +316,32 @@ namespace ProBuilds
             itemSet.MatchCount = stats.MatchCount;
 
             //Come up with an item set title
-            itemSet.title = championInfo.Name + " " + (min * 100).ToString() + " " + ItemSetNaming.ToolName;
+            itemSet.title = championInfo.Name + " " + ItemSetNaming.ToolName;
 
             //Add a nice description of how this was generated
-            itemSet.description = "Item set generated using " + stats.MatchCount.ToString() + " matches and only taking items used at least " + (min * 100).ToString() + "% of the time.";
+            itemSet.description = "Item set generated using " + stats.MatchCount.ToString() + " matches.";
 
             //Fill out a bunch of other stuff that is the same for this tool
             itemSet.type = type;
             itemSet.map = map;
             itemSet.mode = mode;
             itemSet.priority = priority;
-            itemSet.sortrank = sortRank < 0 ? (int)Math.Round(min * 100) : sortRank;
+            itemSet.sortrank = sortRank < 0 ? (int)Math.Round(SetBuilderSettings.ItemMinimumPurchasePercentage.Start * 100) : sortRank;
 
             // Block info
             var blockData = new []
             {
-                new { Name = "Starting Items", Items = stats.Start.Items },
-                new { Name = "Early Items", Items = stats.Early.Items },
-                new { Name = "Midgame Items", Items = stats.Mid.Items },
-                new { Name = "Lategame Items", Items = stats.Late.Items }
+                new { Name = "Starting Items", Items = stats.Start.Items, Min = SetBuilderSettings.ItemMinimumPurchasePercentage.Start },
+                new { Name = "Early Items", Items = stats.Early.Items, Min = SetBuilderSettings.ItemMinimumPurchasePercentage.Early },
+                new { Name = "Midgame Items", Items = stats.Mid.Items, Min = SetBuilderSettings.ItemMinimumPurchasePercentage.Mid },
+                new { Name = "Lategame Items", Items = stats.Late.Items, Min = SetBuilderSettings.ItemMinimumPurchasePercentage.Late }
             };
 
             // Create blocks and filter to non-empty blocks
             var blocks = blockData.Select(blockInfo =>
                 new ItemSet.Block(blockInfo.Name)
-                {
-                    items = getItemsWithinMin(blockInfo.Items, min)
+            {
+                    items = getItemsWithinMin(blockInfo.Items, blockInfo.Min)
                 })
                 .Where(block => block.items.Count > 0);
 
@@ -343,31 +353,37 @@ namespace ProBuilds
 
         private static List<ItemSet.Item> getItemsWithinMin(Dictionary<int, List<ItemPurchaseStats>> items, float min)
         {
-            List<ItemSet.Item> itemsInBlock = items.Select(entry => new ItemSet.Item(entry.Key.ToString())
-            {
-                count = entry.Value.Where(item => item.Percentage >= min).Count()
-            }).Where(item => item.count > 0).ToList();
+            List<ItemSet.Item> itemsInBlock = items
+                .Where(entry => entry.Value.Any(item => item.Percentage >= min))
+                .Select(entry => new ItemSet.Item(entry.Key.ToString())
+                {
+                    count = entry.Value.Where(item => item.Percentage >= min).Count(),
+                    percentage = entry.Value.LastOrDefault(item => item.Percentage >= min).Percentage
+                }).ToList();
 
             return itemsInBlock;
 
-            ////Loop through all the items
-            //foreach (KeyValuePair<int, List<float>> entry in items)
-            //{
-            //    //Loop through each item count and percentage
-            //    int count = 0;
-            //    foreach (float percentage in entry.Value)
-            //    {
-            //        count++;
+            /*
+            //Loop through all the items
+            foreach (KeyValuePair<int, List<float>> entry in items)
+            {
+                //Loop through each item count and percentage
+                int count = 0;
+                foreach (float percentage in entry.Value)
+                {
+                    count++;
 
-            //        //Only add the items that are within the percentage
-            //        if (percentage >= min)
-            //        {
-            //            ItemSet.Item item = new ItemSet.Item(entry.Key.ToString());
-            //            item.count = count;
-            //            itemList.Add(item);
-            //        }
-            //    }
-            //}
+                    //Only add the items that are within the percentage
+                    if (percentage >= min)
+                    {
+                        ItemSet.Item item = new ItemSet.Item(entry.Key.ToString());
+                        item.count = count;
+                        item.percentage = percentage;
+                        itemList.Add(item);
+                    }
+                }
+            }
+            */
         }
     }
 
@@ -401,9 +417,9 @@ namespace ProBuilds
         private static string getItemSetDirectory(string championKey = "")
         {
             if (championKey == "")
-                return LeagueOfLegendsPath + GlobalSubPath;
+                return Path.Combine(LeagueOfLegendsPath, GlobalSubPath);
             else
-                return LeagueOfLegendsPath +  string.Format(ChampionSubPath, championKey);
+                return Path.Combine(LeagueOfLegendsPath, string.Format(ChampionSubPath, championKey));
         }
         
         /// <summary>
@@ -474,33 +490,36 @@ namespace ProBuilds
         /// </summary>
         /// <param name="itemSet">Item set to write out to a json file</param>
         /// <param name="championKey">Key value for the champion you want the item set directory for or empty if global</param>
+        /// <param name="name">Unique name to append to this ItemSet</param>
+        /// <param name="writeExtraFields">True to write out any fields taged as extra, false to not</param>
+        /// <param name="subDir">Sub directory to write to, if empty use League of Legends directory</param>
         /// <returns>True if item set doesn't exists and was written, false if item set exists already</returns>
-        public static bool writeOutItemSet(ItemSet itemSet, string championKey = "", string name = "")
+        public static bool writeOutItemSet(ItemSet itemSet, string championKey = "", string name = "", bool writeExtraFields = true, string subDir = "")
         {
+            //Setup our custom serialization settings
+            JsonSerializerSettings settings = new JsonSerializerSettings();
+            settings.Formatting = Formatting.Indented;
+            if (!writeExtraFields)
+                settings.ContractResolver = new ExtraFieldContractResolver();
+
             //Convert our item set to json
-            string JSON = JsonConvert.SerializeObject(itemSet, Formatting.Indented);
+            string JSON = JsonConvert.SerializeObject(itemSet, settings);
 
             //Get the directory we are going to write out to
-            string itemSetDir = getItemSetDirectory(championKey);
+            string itemSetDir = (String.IsNullOrEmpty(subDir)) ? getItemSetDirectory(championKey) : Path.Combine(subDir, championKey == "" ? "Global" : championKey) + Path.DirectorySeparatorChar;
 
             //Make sure the directory exists
             ensureDirectory(itemSetDir);
 
             //Create our unique file name for the system
-            string fileName = itemSetDir + getItemSetFileName(championKey, itemSet.map, name);
+            string fileName = Path.Combine(itemSetDir, getItemSetFileName(championKey, itemSet.map, name));
 
             //Check if we already have this file
             if (File.Exists(fileName))
                 return false;
 
             //Write out the file
-            using (FileStream file = File.Create(fileName))
-            {
-                using (StreamWriter writer = new StreamWriter(file))
-                {
-                    writer.Write(JSON);
-                }
-            }
+            File.WriteAllText(fileName, JSON);
 
             return true;
         }
@@ -511,32 +530,26 @@ namespace ProBuilds
         /// <param name="championKey">Key value for the champion you want the item set directory for or empty if global</param>
         /// <param name="map">Map this item set is for (used in naming convention)</param>
         /// <param name="name">Name for this item set file (used in naming convention)</param>
+        /// <param name="subDir">Sub directory to read from, if empty use League of Legends directory</param>
         /// <returns>Item set if file was found or null if not</returns>
-        public static ItemSet readInItemSet(string championKey = "", ItemSet.Map map = ItemSet.Map.SummonersRift, string name = "")
+        public static ItemSet readInItemSet(string championKey = "", ItemSet.Map map = ItemSet.Map.SummonersRift, string name = "", string subDir = "")
         {
             //Get the directory we are going to write out to
-            string itemSetDir = getItemSetDirectory(championKey);
-
-            //Make sure the directory exists
-            ensureDirectory(itemSetDir);
+            string itemSetDir = (String.IsNullOrEmpty(subDir)) ? getItemSetDirectory(championKey) : Path.Combine(subDir, championKey == "" ? "Global" : championKey) + Path.DirectorySeparatorChar;
 
             //Create our unique file name for the system
-            string fileName = itemSetDir + getItemSetFileName(championKey, map, name);
+            string fileName = Path.Combine(itemSetDir, getItemSetFileName(championKey, map, name));
 
             //Make sure we have this file
             if (!File.Exists(fileName))
                 return null;
 
             //Read in the file
-            using (FileStream file = File.OpenRead(fileName))
-            {
-                using (StreamReader reader = new StreamReader(file))
-                {
-                    string JSON = reader.ReadToEnd();
+            string JSON = File.ReadAllText(fileName);
+
+            //Convert the JSON string to an object
                     ItemSet itemSet = JsonConvert.DeserializeObject<ItemSet>(JSON);
                     return itemSet;
                 }
             }
         }
-    }
-}

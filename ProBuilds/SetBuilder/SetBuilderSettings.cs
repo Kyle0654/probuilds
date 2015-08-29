@@ -31,6 +31,12 @@ namespace ProBuilds.SetBuilder
         /// <summary>
         /// Minimum percentage of times an item must be built to be included in a block.
         /// </summary>
-        public const float ItemMinimumPurchasePercentage = 0.3f;
+        public static class ItemMinimumPurchasePercentage
+        {
+            public const float Start = 0.4f;
+            public const float Early = 0.3f;
+            public const float Mid = 0.25f;
+            public const float Late = 0.1f;
+        }
     }
 }

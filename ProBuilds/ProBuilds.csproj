@@ -58,6 +58,7 @@
     <Compile Include="ChampionWinCounter.cs" />
     <Compile Include="CompressedJson.cs" />
     <Compile Include="EnumExtensions.cs" />
+    <Compile Include="ExtraFieldContractResolver.cs" />
     <Compile Include="IMatchDetailProcessor.cs" />
     <Compile Include="ItemPurchaseRecorder.cs" />
     <Compile Include="ItemSetWriter.cs" />
