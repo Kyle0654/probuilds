@@ -22,6 +22,13 @@
 				margin-top: 16px;
 				text-align: center;
 			}
+
+            .leftcol {
+                overflow-y: auto;
+				
+				display: flex;
+				flex-direction: column;
+            }
 			
 			#sets {
 				overflow-y: auto;
@@ -188,6 +195,28 @@
 			}
 			
 			$(window).on('hashchange', handlehash);
+
+			$(document).ready(function () {
+                //Add champion search functionality
+			    $("#setssearch").keyup(function () {
+                    //Get the filter value
+			        var filter = $(this).val(),
+                        count = 0;
+
+                    //Loop through each set and show or hide it based on our search
+			        $("#sets a").each(function () {
+			            var name = $(this).attr('name');
+			            var length = name.length > 0;
+
+			            if (length && name.search(new RegExp(filter, "i")) < 0) {
+			                $(this).hide();
+			            } else {
+			                $(this).show();
+			                count++;
+			            }
+			        });
+			    });
+			});
 		
 			function getblockhtml( block ) {
 			    var blockhtml = '';
@@ -272,7 +301,7 @@
 					var seturi = setdata.set;
 				
 					var champion = getchampion( champkey );
-					setsdiv.append( '<a name="' + champkey + '" class="set link" href="' + seturi + '">' + getchampionimg( champkey ) + ' ' + champion.name + '</a>' );
+					setsdiv.append('<a name="' + champkey + '" class="set link" href="' + seturi + '">' + getchampionimg(champkey) + ' ' + champion.name + '</a>');
 				});
 				
 				setsdiv.find( 'a' ).click( function() {
@@ -308,7 +337,8 @@
 				});
 			}
 		
-			$( function() {
+			$(function () {
+			    searchdiv = $( '#search' );
 				setsdiv = $( '#sets' );
 				setviewerdiv = $( '#setviewer' );
 				settextarea = $( '#settextarea' );
@@ -320,7 +350,14 @@
 	</head>
 	<body>
 		<div id="root">
-			<div id="sets"></div>
+            <div class="leftcol">
+                <div id="search">
+                    <label for="sets">Filter: </label>
+                    <input id="setssearch" />
+                </div>
+                <br />
+                <div id="sets"></div>
+            </div>
 			<div id="setviewer"></div>
 			<div id="settext">
 				<span id="setfilename"></span>
