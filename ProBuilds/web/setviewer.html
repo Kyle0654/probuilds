@@ -218,11 +218,9 @@
 			    $("#setssearch").keyup(function () {
                     //Get the filter value
 			        var filter = $(this).val(),
-                        filtername = $(this).text(),
                         count = 0;
 
 			        var searchfilter = new RegExp(filter, "i");
-			        var searchtext = new RegExp(filter, 'i');
 
                     //Loop through each set and show or hide it based on our search
 			        $("#sets a").each(function () {
@@ -230,7 +228,7 @@
 			            var text = $(this).text();
 			            var length = name.length > 0;
 
-			            if (length && name.search( searchfilter ) < 0 && text.search( searchtext ) < 0) {
+			            if (length && name.search( searchfilter ) < 0 && text.search( searchfilter ) < 0) {
 			                $(this).hide();
 			            } else {
 			                $(this).show();
