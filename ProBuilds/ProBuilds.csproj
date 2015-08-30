@@ -63,7 +63,7 @@
     <Compile Include="IO\CompressedJson.cs" />
     <Compile Include="IO\MetadataFieldContractResolver.cs" />
     <Compile Include="Pipeline\IMatchDetailProcessor.cs" />
-    <Compile Include="Match\ChampionMatchItemPurchases.cs" />
+    <Compile Include="BuildPath\ChampionMatchItemPurchases.cs" />
     <Compile Include="Match\ItemPurchaseInformation.cs" />
     <Compile Include="Pipeline\ItemPurchaseRecorder.cs" />
     <Compile Include="SetBuilder\ItemSet.cs" />

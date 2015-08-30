@@ -1,7 +1,8 @@
+using ProBuilds.Match;
 using RiotSharp.MatchEndpoint;
 using System.Collections.Generic;
 
-namespace ProBuilds.Match
+namespace ProBuilds.BuildPath
 {
     public class ChampionMatchItemPurchases
     {
