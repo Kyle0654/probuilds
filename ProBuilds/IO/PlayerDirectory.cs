@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ProBuilds
+namespace ProBuilds.IO
 {
     /// <summary>
     /// All data we store about players (currently pretty minimal)
@@ -25,7 +25,9 @@ namespace ProBuilds
         }
     }
 
-    // TODO: Comment
+    /// <summary>
+    /// Player data storage.
+    /// </summary>
     public static class PlayerDirectory
     {
         static string PlayerRoot = "players";

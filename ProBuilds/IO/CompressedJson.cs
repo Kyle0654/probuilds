@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ProBuilds
+namespace ProBuilds.IO
 {
     static class CompressedJson
     {

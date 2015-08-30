@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 
 namespace ProBuilds
 {
+    /// <summary>
+    /// All static data we store about a realm.
+    /// </summary>
     public class RealmStaticData
     {
         public ChampionListStatic Champions { get; private set; }

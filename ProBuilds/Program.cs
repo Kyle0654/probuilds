@@ -1,5 +1,7 @@
 ﻿using Newtonsoft.Json;
 using ProBuilds.BuildPath;
+using ProBuilds.Match;
+using ProBuilds.Pipeline;
 using ProBuilds.SetBuilder;
 using RiotSharp;
 using RiotSharp.LeagueEndpoint;

@@ -2,29 +2,30 @@
 using Newtonsoft.Json.Serialization;
 using System;
 using System.Reflection;
+using System.Linq;
 
-namespace ProBuilds
+namespace ProBuilds.IO
 {
     /// <summary>
-    /// Custom attribute to exclude any extra fields
+    /// Custom attribute to exclude any metadata fields
     /// </summary>
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
-    public class JsonExtraFieldAttribute : Attribute
+    public class MetadataFieldAttribute : Attribute
     {
     }
 
     /// <summary>
-    /// Custom contract resolver to exclude any extra fields
+    /// Custom contract resolver to exclude any metadata fields
     /// </summary>
-    public class ExtraFieldContractResolver : DefaultContractResolver
+    public class ExcludeMetadataFieldsContractResolver : DefaultContractResolver
     {
         protected override JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization)
         {
             var property = base.CreateProperty(member, memberSerialization);
 
             //Check if this property declared the attribute
-            var extraPropertyAttr = member.GetCustomAttribute<JsonExtraFieldAttribute>();
-            if (extraPropertyAttr != null)
+            var attributes = member.GetCustomAttributes<MetadataFieldAttribute>();
+            if (attributes.Count() > 0)
             {
                 property.ShouldSerialize = x => false;
             }

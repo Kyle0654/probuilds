@@ -1,4 +1,6 @@
-﻿using RiotSharp;
+﻿using ProBuilds.IO;
+using ProBuilds.Pipeline;
+using RiotSharp;
 using RiotSharp.LeagueEndpoint;
 using RiotSharp.MatchEndpoint;
 using System;
@@ -9,7 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
-namespace ProBuilds
+namespace ProBuilds.Pipeline
 {
     public class PlayerMatchProducer
     {

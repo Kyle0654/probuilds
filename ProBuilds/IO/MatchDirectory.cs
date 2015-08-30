@@ -6,9 +6,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ProBuilds
+namespace ProBuilds.IO
 {
-    // TODO: Comment
+    /// <summary>
+    /// Cache storage for matches, so we don't have to download them every time.
+    /// </summary>
     public static class MatchDirectory
     {
         static string MatchRoot = "matches";

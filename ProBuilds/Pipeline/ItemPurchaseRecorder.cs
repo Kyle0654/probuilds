@@ -9,75 +9,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ProBuilds
+namespace ProBuilds.Pipeline
 {
-    public class ItemPurchaseInformation
-    {
-        public int ItemId;
-        public int ItemBefore;
-        public int ItemAfter;
-
-        public EventType EventType;
-
-        public GameStateTracker GameState;
-
-        public ItemPurchaseInformation() { }
-
-        public ItemPurchaseInformation(Event itemEvent, GameStateTracker gameState)
-        {
-            ItemId = itemEvent.ItemId;
-            ItemBefore = itemEvent.ItemBefore;
-            ItemAfter = itemEvent.ItemAfter;
-
-            if (!itemEvent.EventType.HasValue)
-            {
-                throw new ArgumentException("Event type must not be null.", "itemEvent");
-            }
-
-            EventType = itemEvent.EventType.Value;
-
-            GameState = gameState.Clone();
-        }
-
-        public override string ToString()
-        {
-            if (EventType == RiotSharp.MatchEndpoint.EventType.ItemUndo)
-            {
-                string itemBeforeString = ItemBefore == 0 ? "0" : string.Format("{0} [{1}]", ItemBefore, StaticDataStore.Items.Items[ItemBefore].Name);
-                string itemAfterString = ItemAfter == 0 ? "0" : string.Format("{0} [{1}]", ItemAfter, StaticDataStore.Items.Items[ItemAfter].Name);
-                return string.Format("{0}: {1} => {2}", EventType.ToString(), itemBeforeString, itemAfterString);
-            }
-            else
-            {
-                return string.Format("{0}: {1} [{2}]", EventType.ToString(), ItemId, StaticDataStore.Items.Items[ItemId].Name);
-            }
-        }
-    }
-
-    public class ChampionMatchItemPurchases
-    {
-        public int ChampionId { get; private set; }
-        public long MatchId { get; private set; }
-
-        public Lane Lane { get; private set; }
-        public bool IsWinner { get; private set; }
-        public bool HasSmite { get; private set; }
-
-        public List<ItemPurchaseInformation> ItemPurchases { get; private set; }
-
-        public ChampionMatchItemPurchases(int championId, long matchId, Lane lane, bool isWinner, bool hasSmite)
-        {
-            ChampionId = championId;
-            MatchId = matchId;
-
-            Lane = lane;
-            IsWinner = isWinner;
-            HasSmite = hasSmite;
-
-            ItemPurchases = new List<ItemPurchaseInformation>();
-        }
-    }
-
     public class ItemPurchaseRecorder : IMatchDetailProcessor
     {
         private int ProcessedCount = 0;
@@ -114,7 +47,7 @@ namespace ProBuilds
             }
 
             // Process item purchases
-            GameStateTracker gameState = new GameStateTracker(match);
+            GameState gameState = new GameState(match);
 
             // Handle null values
             if (match.Timeline == null || match.Timeline.Frames == null)

@@ -8,144 +8,8 @@ using System.Threading.Tasks;
 
 namespace ProBuilds.Match
 {
-    public class ChampionState
+    public class GameState
     {
-        public int ChampionId;
-
-        public int Kills;
-        public int Deaths;
-        public int Assists;
-
-        public List<int> Items;
-
-        /// <summary>
-        /// Used to track item combinations.
-        /// </summary>
-        [JsonIgnore]
-        private List<Tuple<int, List<int>>> ItemCombines;
-
-        public ChampionState() { }
-
-        public ChampionState(int championId)
-        {
-            ChampionId = championId;
-            Items = new List<int>();
-            ItemCombines = new List<Tuple<int, List<int>>>();
-        }
-
-        public ChampionState Clone()
-        {
-            ChampionState state = new ChampionState()
-            {
-                ChampionId = this.ChampionId,
-                Kills = this.Kills,
-                Deaths = this.Deaths,
-                Assists = this.Assists,
-                Items = new List<int>(this.Items)
-            };
-
-            return state;
-        }
-
-        #region Item Handling
-
-        internal void ItemPurchased(int itemId)
-        {
-            Items.Add(itemId);
-            ItemCombines.Add(new Tuple<int, List<int>>(itemId, new List<int>()));
-        }
-
-        internal void ItemSold(int itemId)
-        {
-            Items.Remove(itemId);
-        }
-
-        internal void ItemDestroyed(int itemId)
-        {
-            Items.Remove(itemId);
-
-            // Keep track of combined items for undo
-            if (!StaticDataStore.Items.Items[itemId].Consumed && ItemCombines.Count > 0)
-            {
-                ItemCombines[ItemCombines.Count - 1].Item2.Add(itemId);
-            }
-        }
-
-        internal void ItemUndo(int itemBefore, int itemAfter)
-        {
-            if (itemBefore != 0)
-            {
-                Items.Remove(itemBefore);
-
-                // Restore any combined items that were destroyed as part of the purchase being undone.
-                var purchase = ItemCombines.LastOrDefault();
-                if (purchase != null)
-                {
-                    ItemCombines.RemoveAt(ItemCombines.Count - 1);
-                    Items.AddRange(purchase.Item2);
-                }
-            }
-
-            if (itemAfter != 0)
-                Items.Add(itemAfter);
-        }
-
-        #endregion
-    }
-
-    public class TeamState
-    {
-        public int TeamId;
-
-        public int TowersDestroyed;
-        public Dictionary<TowerType, int> TowerTypesDestroyed = new Dictionary<TowerType, int>();
-        public Dictionary<int, ChampionState> Champions;
-
-        public int InhibitorsDestroyed;
-
-        public int DragonKills;
-        public int BaronKills;
-
-        public TeamState()
-        {
-            Champions = new Dictionary<int, ChampionState>();
-        }
-
-        public TeamState(int teamId, IEnumerable<int> champions)
-        {
-            TeamId = teamId;
-            Champions = champions.ToDictionary(c => c, c => new ChampionState(c));
-        }
-
-        /// <summary>
-        /// Clone the team state.
-        /// </summary>
-        public TeamState Clone()
-        {
-            TeamState state = new TeamState()
-            {
-                TeamId = this.TeamId,
-                TowersDestroyed = this.TowersDestroyed,
-                DragonKills = this.DragonKills,
-                BaronKills = this.BaronKills
-            };
-
-            foreach (var towerType in TowerTypesDestroyed)
-            {
-                state.TowerTypesDestroyed.Add(towerType.Key, towerType.Value);
-            }
-            foreach (var champion in Champions)
-            {
-                state.Champions.Add(champion.Key, champion.Value.Clone());
-            }
-
-            return state;
-        }
-    }
-
-    public class GameStateTracker
-    {
-        // TODO: fill this out over the game
         public TimeSpan Timestamp;
 
         public Dictionary<int, TeamState> Teams;
@@ -163,13 +27,13 @@ namespace ProBuilds.Match
 
         #endregion
 
-        public GameStateTracker()
+        public GameState()
         {
             Teams = new Dictionary<int, TeamState>();
             ParticipantMap = new Dictionary<int, int>();
         }
 
-        public GameStateTracker(MatchDetail match)
+        public GameState(MatchDetail match)
         {
             // TODO: track champion lanes/roles/etc.
             Teams = match.Teams.ToDictionary(
@@ -186,9 +50,9 @@ namespace ProBuilds.Match
         /// Create a clone of the game state (always use this when storing a copy, as it will change during processing).
         /// </summary>
         /// <returns></returns>
-        public GameStateTracker Clone()
+        public GameState Clone()
         {
-            GameStateTracker state = new GameStateTracker()
+            GameState state = new GameState()
             {
                 Timestamp = this.Timestamp
             };

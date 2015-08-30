@@ -1,4 +1,5 @@
-﻿using RiotSharp;
+﻿using ProBuilds.IO;
+using RiotSharp;
 using RiotSharp.LeagueEndpoint;
 using RiotSharp.MatchEndpoint;
 using System;
@@ -11,14 +12,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
-namespace ProBuilds
+namespace ProBuilds.Pipeline
 {
-    public class TestSynchronizer
-    {
-        public long Limit = 10000; // Max matches to process (pulls from API if not enough on disk)
-        public long Count = 0;
-    }
-
     /// <summary>
     /// Pipeline to query for and process matches.
     /// </summary>

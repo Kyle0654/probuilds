@@ -7,15 +7,33 @@ using System.Threading.Tasks;
 
 namespace ProBuilds
 {
+    /// <summary>
+    /// A sample class to count wins per champion.
+    /// </summary>
     public class ChampionWinCounter : IMatchDetailProcessor
     {
+        public class ChampionWinData
+        {
+            public long Wins;
+            public long Matches;
+            public long Losses { get { return Matches - Wins; } }
+
+            public void Increment(bool isWinner)
+            {
+                if (isWinner)
+                    ++Wins;
+
+                ++Matches;
+            }
+        }
+
         public int MaxDegreeOfParallelism { get { return 16; } }
 
-        public ChampionMatchDataCollection<bool> ChampionMatchData { get; private set; }
+        public ConcurrentDictionary<int, ChampionWinData> ChampionWinCount { get; private set; }
 
         public ChampionWinCounter()
         {
-            ChampionMatchData = new ChampionMatchDataCollection<bool>();
+            ChampionWinCount = new ConcurrentDictionary<int, ChampionWinData>();
         }
 
         /// <summary>
@@ -31,8 +49,10 @@ namespace ProBuilds
                 int championId = participant.ChampionId;
                 bool isWinner = match.Teams.FirstOrDefault(t => participant.TeamId == t.TeamId).Winner;
 
-                ChampionMatchData<bool> championMatches = ChampionMatchData.GetOrCreateMatchData(championId);
-                championMatches.AddMatch(matchId, isWinner);
+                ChampionWinCount.AddOrUpdate(championId,
+                    id => { return new ChampionWinData() { Wins = isWinner ? 1 : 0, Matches = 1 }; },
+                    (id, winData) => { winData.Increment(isWinner); return winData; }
+                );
             });
         }
     }
