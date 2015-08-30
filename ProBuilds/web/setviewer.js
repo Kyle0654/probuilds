@@ -106,14 +106,22 @@ $(document).ready(function () {
     });
 });
 
-function getblockhtml(block) {
-    var blockhtml = '';
-
+//Calculate the amount of cold an array of items cost (doesn't factor in items that build into others)
+function calculateGold(items) {
     var cost = 0;
-    $.each(block.items, function (i, item) {
+    $.each(items, function (i, item) {
         var itemInfo = getitem(item.id);
         cost += itemInfo.gold.total;
     });
+
+    return cost;
+}
+
+function getblockhtml(block) {
+    var blockhtml = '';
+
+    //Get the cost of the items in this block
+    var cost = calculateGold(block.items);
 
     var blocktitle = block.type + ' (' + cost + ' Gold)';
     if (block.showIfSummonerSpell) {
