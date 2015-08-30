@@ -1,0 +1,130 @@
+﻿#root {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: no-wrap;
+	justify-content: center;
+	align-items: stretch;
+				
+	height: 600px;
+}
+			
+#footer, #root {
+	width: 1200px;
+				
+	margin: auto;
+}
+			
+#footer {
+	margin-top: 16px;
+	text-align: center;
+}
+			
+.leftcol {
+    overflow-y: auto;
+				
+	display: flex;
+	flex-direction: column;
+}
+			
+#sets {
+	overflow-y: auto;
+				
+	display: flex;
+	flex-direction: column;
+	flex-wrap: no-wrap;
+	justify-content: flex-start;
+	align-items: flex-start;
+				
+	flex: 0 0 main-size;
+}
+			
+#sets > a {
+	display: block;
+    margin: 2px 0px;
+    width: 95%;
+}
+
+#sets > a > img {
+    float: left;
+    margin-right: 0.2em;
+}
+
+#sets > a > .set.title {
+    font-size: 0.7em;
+}
+			
+#setviewer {
+	overflow-y: auto;
+
+	margin: 0px 16px;
+				
+	flex: 1 0;
+}
+			
+#settext {
+	width: 400px;
+	overflow:none;
+				
+	flex: 0 0 main-size;
+				
+	display: flex;
+	flex-direction: column;
+	flex-wrap: no-wrap;
+	justify-content: flex-start;
+	align-items: flex-start;
+}
+			
+#settext > * {
+	flex: 0 0;
+}
+			
+#settextarea {
+	width: 100%;
+	resize: none;
+				
+	flex: 1;
+}
+			
+#setviewer .set.title {
+	font-weight: bold;
+	font-size:1.2em;
+}
+		
+.block.container {
+	border: 1px solid black;
+	padding: 2px;
+}
+			
+.block.title {
+	display: block;
+	font-weight: bold;
+	background: #ccc;
+				
+	margin: 1px;
+	padding: 1px;
+}
+			
+.block.itemcontainer {
+	display: block;
+	display: flex;
+				
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: flex-start;
+	align-items: flex-start;
+				
+	margin: 1px;
+}
+			
+.block.item {
+	border: 1px solid #ccc;
+	display: inline-block;
+				
+	text-align: center;
+	font-size: 0.8em;
+				
+	margin: 1px;
+}
+				
+img.item { width:32px; height:32px; }
+img.champion { width:32px; height:32px; }
