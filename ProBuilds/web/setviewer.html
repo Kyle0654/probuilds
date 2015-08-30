@@ -164,6 +164,11 @@
 				return champions.data[ key ];
 			}
 
+			function getchampionbyid(id) {
+                var key = champions.keys[ id ];
+                return getchampion( key );
+			}
+
 			// TODO: use sprites
 			function getitemimg( id ) {
 				var item = getitem( id );
@@ -176,7 +181,7 @@
 			}
 
 			function getSetKey( set ) {
-			    return set.ChampionId + '_'
+			    return getchampionbyid( set.ChampionId ).name + '_'
                     + set.Lane + '_'
                     + (set.HasSmite ? "Smite" : "NoSmite");
 			}

@@ -447,7 +447,7 @@ namespace ProBuilds
                 string setJson = JsonConvert.SerializeObject(set.Set);
                 File.WriteAllText(file, setJson);
 
-                return new { Key = set.Key, File = Path.Combine(set.WebPath, filename), Title = set.Set.title };
+                return new { Key = set.Key, File = Path.Combine(set.WebPath, filename).Replace('\\', '/'), Title = set.Set.title };
             }).GroupBy(set => set.Key.ChampionId).ToDictionary(
                 g => StaticDataStore.Champions.Keys[g.Key],
                 g => g.ToList());

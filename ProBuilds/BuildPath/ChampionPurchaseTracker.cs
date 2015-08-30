@@ -1,4 +1,6 @@
-﻿using RiotSharp.MatchEndpoint;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using RiotSharp.MatchEndpoint;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -151,6 +153,8 @@ namespace ProBuilds.BuildPath
     public class PurchaseSetKey
     {
         public int ChampionId { get; private set; }
+
+        [JsonConverter(typeof(StringEnumConverter))]
         public Lane Lane { get; private set; }
         public bool HasSmite { get; private set; }
 
