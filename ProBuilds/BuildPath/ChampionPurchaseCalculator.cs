@@ -82,6 +82,27 @@ namespace ProBuilds.BuildPath
                     g => g.Key,
                     g => g.Select(d => d.Stats).OrderBy(s => s.AveragePurchaseTimeSeconds).ToList()
                 );
+
+            // Move consumables to end of each section
+            foreach (GameStage stage in Purchases.Keys)
+            {
+                // Remove all consumables, sort by cost, then add to end of list
+                var purchaseList = Purchases[stage];
+                var consumables = purchaseList.Where(d => StaticDataStore.Items.Items[d.ItemId].Consumed).ToList();
+                purchaseList.RemoveAll(d => consumables.Contains(d));
+                consumables.Sort((a, b) =>
+                    {
+                        int cmp = StaticDataStore.Items.Items[a.ItemId].Gold.TotalPrice.CompareTo(
+                            StaticDataStore.Items.Items[b.ItemId].Gold.TotalPrice);
+
+                        if (cmp != 0)
+                            return cmp;
+
+                        return a.ItemId.CompareTo(b.ItemId);
+                    }
+                );
+                purchaseList.AddRange(consumables);
+            }
         }
 
         /// <summary>

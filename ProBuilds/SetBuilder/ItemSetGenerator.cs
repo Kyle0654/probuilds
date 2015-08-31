@@ -95,10 +95,25 @@ namespace ProBuilds.SetBuilder
                         percentage = entry.Percentage
                     }).ToList()
                 })
-                .Where(block => block.items.Count > 0);
+                .Where(block => block.items.Count > 0).ToList();
+
+            // Combine adjacent items
+            blocks.ForEach(block =>
+            {
+                for (int i = 0; i < block.items.Count - 1; ++i)
+                {
+                    if (block.items[i].id == block.items[i + 1].id)
+                    {
+                        // Remove when adjacent, and keep the lower percentage
+                        ++block.items[i + 1].count;
+                        block.items.RemoveAt(i);
+                        --i;
+                    }
+                }
+            });
 
             // Add blocks to item set
-            itemSet.blocks = new List<ItemSet.Block>(blocks);
+            itemSet.blocks = blocks;
 
             return itemSet;
         }
