@@ -46,8 +46,8 @@ namespace ProBuilds.SetBuilder
 
             // Loop through all our champions we have stats for and generate sets for them
             var itemSets = allstats.AsParallel().WithDegreeOfParallelism(4).ToDictionary(
-            kvp => kvp.Key,
-            kvp => generate(kvp.Key, kvp.Value)
+                kvp => kvp.Key,
+                kvp => generate(kvp.Key, kvp.Value)
             );
 
             return itemSets;
@@ -79,12 +79,12 @@ namespace ProBuilds.SetBuilder
 
             // Block info
             var blockData = new[]
-{
-new { Name = "Starting Items", Items = stats.Start.Items, Min = SetBuilderSettings.ItemMinimumPurchasePercentage.Start },
-new { Name = "Early Items", Items = stats.Early.Items, Min = SetBuilderSettings.ItemMinimumPurchasePercentage.Early },
-new { Name = "Midgame Items", Items = stats.Mid.Items, Min = SetBuilderSettings.ItemMinimumPurchasePercentage.Mid },
-new { Name = "Lategame Items", Items = stats.Late.Items, Min = SetBuilderSettings.ItemMinimumPurchasePercentage.Late }
-};
+            {
+                new { Name = "Starting Items", Items = stats.Start.Items, Min = SetBuilderSettings.ItemMinimumPurchasePercentage.Start },
+                new { Name = "Early Items", Items = stats.Early.Items, Min = SetBuilderSettings.ItemMinimumPurchasePercentage.Early },
+                new { Name = "Midgame Items", Items = stats.Mid.Items, Min = SetBuilderSettings.ItemMinimumPurchasePercentage.Mid },
+                new { Name = "Lategame Items", Items = stats.Late.Items, Min = SetBuilderSettings.ItemMinimumPurchasePercentage.Late }
+            };
 
             // Create blocks and filter to non-empty blocks
             var blocks = blockData.Select(blockInfo =>
@@ -100,15 +100,18 @@ new { Name = "Lategame Items", Items = stats.Late.Items, Min = SetBuilderSetting
             return itemSet;
         }
 
-        private static List<ItemSet.Item> getItemsWithinMin(Dictionary<int, List<ItemPurchaseStats>> items, float min)
+        private static List<ItemSet.Item> getItemsWithinMin(Dictionary<int, Dictionary<int, ItemPurchaseStats>> items, float min)
         {
+            // TODO: combine items by count in a smarter way
+            // TODO: lower percentage for deeper items in a tree
             List<ItemSet.Item> itemsInBlock = items
-            .Where(entry => entry.Value.Any(item => item.Percentage >= min))
-            .Select(entry => new ItemSet.Item(entry.Key.ToString())
-            {
-                count = entry.Value.Where(item => item.Percentage >= min).Count(),
-                percentage = entry.Value.LastOrDefault(item => item.Percentage >= min).Percentage
-            }).ToList();
+                .Where(entry => entry.Value.Any(item => item.Value.Percentage >= min))
+                .OrderBy(entry => entry.Value.Min(item => item.Value.AveragePurchaseTimeSeconds))
+                .Select(entry => new ItemSet.Item(entry.Key.ToString())
+                {
+                    count = entry.Value.Values.Where(item => item.Percentage >= min).Count(),
+                    percentage = entry.Value.Values.LastOrDefault(item => item.Percentage >= min).Percentage
+                }).ToList();
 
             return itemsInBlock;
 

@@ -53,7 +53,7 @@
   <ItemGroup>
     <Compile Include="BuildPath\ChampionPurchaseStats.cs" />
     <Compile Include="BuildPath\ChampionPurchaseTracker.cs" />
-    <Compile Include="BuildPath\ItemCountTracker.cs" />
+    <Compile Include="BuildPath\ItemPurchaseTracker.cs" />
     <Compile Include="BuildPath\ItemPurchaseStats.cs" />
     <Compile Include="BuildPath\PurchaseSet.cs" />
     <Compile Include="BuildPath\PurchaseSetKey.cs" />

@@ -1,3 +1,5 @@
+using ProBuilds.SetBuilder;
+using System.Linq;
 
 namespace ProBuilds.BuildPath
 {
@@ -21,10 +23,18 @@ namespace ProBuilds.BuildPath
             Key = set.Key;
 
             MatchCount = set.MatchCount;
-            Start = new PurchaseStats(set.StartPurchases, set.MatchCount);
-            Early = new PurchaseStats(set.EarlyPurchases, set.MatchCount);
-            Mid = new PurchaseStats(set.MidPurchases, set.MatchCount);
-            Late = new PurchaseStats(set.LatePurchases, set.MatchCount);
+
+            // Split purchases to game stage
+            var startItems = set.AllItemPurchases.Where(SetBuilderSettings.IsStartPurchase);
+            var earlyItems = set.AllItemPurchases.Where(SetBuilderSettings.IsEarlyPurchase);
+            var midItems = set.AllItemPurchases.Where(SetBuilderSettings.IsMidPurchase);
+            var lateItems = set.AllItemPurchases.Where(SetBuilderSettings.IsLatePurchase);
+
+            // Create stats
+            Start = new PurchaseStats(startItems, set.MatchCount);
+            Early = new PurchaseStats(earlyItems, set.MatchCount);
+            Mid = new PurchaseStats(midItems, set.MatchCount);
+            Late = new PurchaseStats(lateItems, set.MatchCount);
         }
     }
 }

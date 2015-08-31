@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ProBuilds.BuildPath;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -37,6 +38,50 @@ namespace ProBuilds.SetBuilder
             public const float Early = 0.3f;
             public const float Mid = 0.25f;
             public const float Late = 0.1f;
+        }
+
+        /// <summary>
+        /// Whether or not an item was purchased, on average, during the start of the game.
+        /// </summary>
+        public static bool IsStartPurchase(ItemPurchaseTrackerData tracker)
+        {
+            return
+                tracker.AveragePurchaseTimeSeconds < 90.0 &&
+                tracker.AverageKills == 0 &&
+                tracker.AverageTowerKills == 0;
+        }
+
+        /// <summary>
+        /// Whether or not an item was purchased, on average, during the early stage of the game.
+        /// </summary>
+        public static bool IsEarlyPurchase(ItemPurchaseTrackerData tracker)
+        {
+            return
+                !IsStartPurchase(tracker) &&
+                tracker.AverageTowerKills == 0;
+        }
+
+        /// <summary>
+        /// Whether or not an item was purchased, on average, during the mid stage of the game.
+        /// </summary>
+        public static bool IsMidPurchase(ItemPurchaseTrackerData tracker)
+        {
+            return
+                !IsStartPurchase(tracker) &&
+                !IsEarlyPurchase(tracker) &&
+                tracker.AverageInnerTowerKills < 3 &&
+                tracker.AverageBaseTowerKills == 0;
+        }
+
+        /// <summary>
+        /// Whether or not an item was purchased, on average, during the late stage of the game.
+        /// </summary>
+        public static bool IsLatePurchase(ItemPurchaseTrackerData tracker)
+        {
+            return
+                !IsStartPurchase(tracker) &&
+                !IsEarlyPurchase(tracker) &&
+                !IsMidPurchase(tracker);
         }
     }
 }

@@ -17,24 +17,86 @@ namespace ProBuilds.BuildPath
 
         public long MatchCount = 0;
 
-        public ConcurrentDictionary<int, ItemCountTracker> StartPurchases = new ConcurrentDictionary<int, ItemCountTracker>();
-        public ConcurrentDictionary<int, ItemCountTracker> EarlyPurchases = new ConcurrentDictionary<int, ItemCountTracker>();
-        public ConcurrentDictionary<int, ItemCountTracker> MidPurchases = new ConcurrentDictionary<int, ItemCountTracker>();
-        public ConcurrentDictionary<int, ItemCountTracker> LatePurchases = new ConcurrentDictionary<int, ItemCountTracker>();
+        public ConcurrentDictionary<int, ItemPurchaseTracker> ItemPurchases = new ConcurrentDictionary<int, ItemPurchaseTracker>();
+
+        /// <summary>
+        /// All purchases, including how many of that item were purchased.
+        /// </summary>
+        public IEnumerable<ItemPurchaseTrackerData> AllItemPurchases
+        {
+            get { return ItemPurchases.Values.SelectMany(tracker => tracker.PerMatchCounts.Values); }
+        }
 
         public PurchaseSet(PurchaseSetKey key)
         {
             Key = key;
         }
 
+        /// <summary>
+        /// Processes purchases to build out information needed to generate an item set.
+        /// </summary>
         public void Process(ChampionMatchItemPurchases matchPurchases)
+        {
+            // Eliminate undo events (and corresponding purchase events)
+            var purchases = EliminateUndos(matchPurchases.ItemPurchases);
+            if (purchases == null)
+                return;
+
+            // Process purchases to determine "builds into" information for each purchase
+            AddBuildsIntoInformation(purchases);
+
+            // Use to test that build tree information is correctly generated
+            ///////
+            //Action<ItemPurchaseInformation> writePurchase = null;
+            //writePurchase = new Action<ItemPurchaseInformation>(p =>
+            //{
+            //    if (p.EventType != EventType.ItemPurchased)
+            //        return;
+
+            //    if (p.BuiltFrom.Count != 0)
+            //        Console.Write(" => ");
+
+            //    if (p.IsRecipeComponent)
+            //        Console.ForegroundColor = ConsoleColor.DarkMagenta;
+            //    else if (p.IsDestroyed)
+            //        Console.ForegroundColor = ConsoleColor.Red;
+            //    else if (p.IsSold)
+            //        Console.ForegroundColor = ConsoleColor.Blue;
+
+            //    Console.Write(p.Item.Name);
+
+            //    Console.ResetColor();
+
+            //    if (p.IsRecipeComponent)
+            //        writePurchase(p.BuildsInto);
+            //    else
+            //        Console.WriteLine();
+            //});
+
+            //purchases.ForEach(p => writePurchase(p));
+            ///////
+
+            // Eliminate sales and destroys (we can get them if needed by following links)
+            var filteredPurchases = purchases.Where(purchase => purchase.EventType == EventType.ItemPurchased).ToList();
+
+            // Track purchases
+            TrackPurchases(filteredPurchases);
+
+            // Increment match processed count
+            Interlocked.Increment(ref MatchCount);
+        }
+
+        /// <summary>
+        /// Eliminate all undos from a purchase log.
+        /// </summary>
+        private List<ItemPurchaseInformation> EliminateUndos(List<ItemPurchaseInformation> purchases)
         {
             // Eliminate all undos
             Stack<ItemPurchaseInformation> purchaseStack = new Stack<ItemPurchaseInformation>();
 
             try
             {
-                matchPurchases.ItemPurchases.ForEach(purchase =>
+                purchases.ForEach(purchase =>
                 {
                     if (purchase.EventType != EventType.ItemUndo)
                     {
@@ -43,17 +105,20 @@ namespace ProBuilds.BuildPath
                     }
                     else
                     {
+                        // Handle undo
                         // Remove any destroy events until the purchase is found
                         while (purchaseStack.Peek().EventType == EventType.ItemDestroyed)
                         {
                             purchaseStack.Pop();
                         }
 
+                        // Make sure the purchase (or sale) matches the undo
                         if (purchaseStack.Peek().ItemId != purchase.ItemBefore && purchaseStack.Peek().ItemId != purchase.ItemAfter)
                         {
                             throw new Exception("Undo not matched by purchase or sale.");
                         }
 
+                        // Remove the purchase (or sale)
                         purchaseStack.Pop();
                     }
                 });
@@ -61,52 +126,115 @@ namespace ProBuilds.BuildPath
             catch (Exception ex)
             {
                 // Something went wrong, this match is invalid
-                return;
+                return null;
             }
 
-            List<ItemPurchaseInformation> purchases = purchaseStack.Reverse().ToList();
+            List<ItemPurchaseInformation> ret = purchaseStack.Reverse().ToList();
+            return ret;
+        }
 
-            // Filter out item purchases by game state
-            var startPurchases = purchases.Where(purchase =>
-            purchase.GameState.Timestamp < TimeSpan.FromSeconds(90) &&
-            purchase.GameState.TotalKills == 0 &&
-            purchase.GameState.TotalTowerKills == 0
-            ).ToList();
+        /// <summary>
+        /// Add information about how items built into other items.
+        /// </summary>
+        private void AddBuildsIntoInformation(List<ItemPurchaseInformation> purchases)
+        {
+            ItemPurchaseInformation latestPurchase = null;
 
-            var earlyPurchases = purchases.Skip(startPurchases.Count).Where(purchase =>
-            purchase.GameState.TotalTowerKills == 0
-            ).ToList();
+            for (int i = 0; i < purchases.Count; ++i)
+            {
+                ItemPurchaseInformation evt = purchases[i];
+                switch (evt.EventType)
+                {
+                    case EventType.ItemDestroyed:
+                        {
+                            // Find the item that was destroyed
+                            var originalpurchase = purchases.Take(i).LastOrDefault(p => p.ItemId == evt.ItemId && p.IsInInventory);
 
-            var midPurchases = purchases.Skip(startPurchases.Count + earlyPurchases.Count).Where(purchase =>
-            purchase.GameState.TotalTowerKillsByType(TowerType.InnerTurret) < 3 &&
-            purchase.GameState.TotalTowerKillsByType(TowerType.BaseTurret) == 0
-            ).ToList();
+                            // Check if this item builds into the latest purchase
+                            var item = evt.Item;
+                            var latestPurchaseItem = (latestPurchase == null) ? null : latestPurchase.Item;
 
-            var latePurchases = purchases.Skip(startPurchases.Count + earlyPurchases.Count + midPurchases.Count).ToList();
+                            if (originalpurchase != null && // some items are granted without a purchase, and can be upgraded (e.g. Viktor's Hex Core)
+                                latestPurchase != null &&
+                                item.BuildsInto(latestPurchaseItem))
+                            {
+                                // It does, mark the original purchase as building into the latest purchase
+                                originalpurchase.BuildsInto = latestPurchase;
+                                latestPurchase.BuiltFrom.Add(originalpurchase);
+                            }
 
-            // Determine items bought at stage of game
-            var startCounts = startPurchases.Where(purchase => purchase.EventType == EventType.ItemPurchased).GroupBy(purchase => purchase.ItemId).Select(g => new { ItemId = g.Key, Count = g.Count() }).ToList();
-            var earlyCounts = earlyPurchases.Where(purchase => purchase.EventType == EventType.ItemPurchased).GroupBy(purchase => purchase.ItemId).Select(g => new { ItemId = g.Key, Count = g.Count() }).ToList();
-            var midCounts = midPurchases.Where(purchase => purchase.EventType == EventType.ItemPurchased).GroupBy(purchase => purchase.ItemId).Select(g => new { ItemId = g.Key, Count = g.Count() }).ToList();
-            var lateCounts = latePurchases.Where(purchase => purchase.EventType == EventType.ItemPurchased).GroupBy(purchase => purchase.ItemId).Select(g => new { ItemId = g.Key, Count = g.Count() }).ToList();
+                            // Mark the destroy and the purchase it links to
+                            if (originalpurchase != null) // some items are granted without a purchase, and can be destroyed (e.g. Kalista's Black Spear)
+                            {
+                                originalpurchase.DestroyedBy = evt;
+                                evt.Destroys = originalpurchase;
+                            }
+                        }
+                        break;
+                    case EventType.ItemPurchased:
+                        {
+                            // Store the new purchase
+                            latestPurchase = evt;
+                        }
+                        break;
+                    case EventType.ItemSold:
+                        {
+                            // Find the purchase to attribute this sale to
+                            var salepurchase = purchases.Take(i).LastOrDefault(p => p.ItemId == evt.ItemId && p.IsInInventory);
+                            if (salepurchase != null)
+                            {
+                                salepurchase.SoldBy = evt;
+                                evt.Sells = salepurchase;
+                            }
+                        }
+                        break;
+                }
+            }
+        }
 
-            // Process into counts
-            startCounts.ForEach(p => StartPurchases.GetOrAdd(p.ItemId, id => new ItemCountTracker(id)).Increment(p.Count));
-            earlyCounts.ForEach(p => EarlyPurchases.GetOrAdd(p.ItemId, id => new ItemCountTracker(id)).Increment(p.Count));
-            midCounts.ForEach(p => MidPurchases.GetOrAdd(p.ItemId, id => new ItemCountTracker(id)).Increment(p.Count));
-            lateCounts.ForEach(p => LatePurchases.GetOrAdd(p.ItemId, id => new ItemCountTracker(id)).Increment(p.Count));
+        /// <summary>
+        /// Track purchases to generate set-generation information.
+        /// </summary>
+        private void TrackPurchases(List<ItemPurchaseInformation> purchases)
+        {
+            Dictionary<int, int> itemPurchaseCounts = new Dictionary<int, int>();
+            purchases.ForEach(purchase =>
+            {
+                if (purchase.EventType != EventType.ItemPurchased)
+                    return;
 
-            // Increment match processed count
-            Interlocked.Increment(ref MatchCount);
+                int count;
+                if (!itemPurchaseCounts.TryGetValue(purchase.ItemId, out count))
+                {
+                    count = 0;
+                }
+
+                ++count;
+                itemPurchaseCounts[purchase.ItemId] = count;
+
+                ItemPurchases.AddOrUpdate(purchase.ItemId,
+                    id =>
+                    {
+                        var tracker = new ItemPurchaseTracker(id);
+                        tracker.Increment(count, purchase);
+                        return tracker;
+                    },
+                    (id, tracker) =>
+                    {
+                        tracker.Increment(count, purchase);
+                        return tracker;
+                    }
+                );
+            });
         }
 
         #region Combination
 
-        private static void Combine(ConcurrentDictionary<int, ItemCountTracker> a, ConcurrentDictionary<int, ItemCountTracker> b, ref ConcurrentDictionary<int, ItemCountTracker> set)
+        private static void Combine(ConcurrentDictionary<int, ItemPurchaseTracker> a, ConcurrentDictionary<int, ItemPurchaseTracker> b, ref ConcurrentDictionary<int, ItemPurchaseTracker> set)
         {
             foreach (int key in a.Keys.Union(b.Keys))
             {
-                ItemCountTracker at, bt;
+                ItemPurchaseTracker at, bt;
                 bool ina = a.TryGetValue(key, out at);
                 bool inb = b.TryGetValue(key, out bt);
                 if (ina && inb)
@@ -127,10 +255,7 @@ namespace ProBuilds.BuildPath
         public static PurchaseSet Combine(PurchaseSet a, PurchaseSet b)
         {
             PurchaseSet set = new PurchaseSet(null);
-            PurchaseSet.Combine(a.StartPurchases, b.StartPurchases, ref set.StartPurchases);
-            PurchaseSet.Combine(a.EarlyPurchases, b.EarlyPurchases, ref set.EarlyPurchases);
-            PurchaseSet.Combine(a.MidPurchases, b.MidPurchases, ref set.MidPurchases);
-            PurchaseSet.Combine(a.LatePurchases, b.LatePurchases, ref set.LatePurchases);
+            PurchaseSet.Combine(a.ItemPurchases, b.ItemPurchases, ref set.ItemPurchases);
             return set;
         }
 

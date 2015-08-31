@@ -15,16 +15,13 @@ namespace ProBuilds.BuildPath
         /// <example>
         /// Items[3012][2].Percentage might return 0.2, meaning that in 20% of games, this champion buys a second item of this type during this stage.
         /// </example>
-        public Dictionary<int, List<ItemPurchaseStats>> Items;
+        public Dictionary<int, Dictionary<int, ItemPurchaseStats>> Items;
 
-        public PurchaseStats(ConcurrentDictionary<int, ItemCountTracker> purchases, long matchCount)
+        public PurchaseStats(IEnumerable<ItemPurchaseTrackerData> purchases, long matchCount)
         {
-            Items = purchases.ToDictionary(
-            kvp => kvp.Value.ItemId,
-            kvp => kvp.Value.PerMatchCounts.Select(ct => new ItemPurchaseStats()
-            {
-                Percentage = (float)ct / (float)matchCount
-            }).ToList()
+            Items = purchases.GroupBy(tracker => tracker.ItemId).ToDictionary(
+                g => g.Key,
+                g => g.ToDictionary(tracker => tracker.Number, tracker => new ItemPurchaseStats(tracker, matchCount))
             );
         }
     }
