@@ -1,7 +1,7 @@
 ﻿#root {
 	display: flex;
 	flex-direction: row;
-	flex-wrap: no-wrap;
+	flex-wrap: nowrap;
 	justify-content: center;
 	align-items: stretch;
 				
@@ -18,6 +18,23 @@
 	margin-top: 16px;
 	text-align: center;
 }
+
+#banner {
+    width: 1200px;
+    margin: auto;
+}
+
+#banner > h1 {
+    float:left;
+}
+
+#banner > p {
+    float:right;
+}
+
+#allsetsdownload {
+    padding-bottom: 5px;
+}
 			
 .leftcol {
     overflow-y: auto;
@@ -31,7 +48,7 @@
 				
 	display: flex;
 	flex-direction: column;
-	flex-wrap: no-wrap;
+	flex-wrap: nowrap;
 	justify-content: flex-start;
 	align-items: flex-start;
 				
@@ -64,8 +81,116 @@
 				
 	flex: 1 0;
 }
-			
-#settext {
+
+/*-- Tab Stuff---*/
+article.tabs
+{
+	position: relative;
+	width: 25em;
+
+    display:flex;
+    flex-direction: column;
+}
+
+article.tabs section
+{
+	position: absolute;
+	display: flex;
+	top: 1.8em;
+	left: 0;
+	height: 91%;
+	padding: 10px 20px;
+	background-color: #ddd;
+	border-radius: 5px;
+	box-shadow: 0 3px 3px rgba(0,0,0,0.1);
+	z-index: 0;
+}
+
+article.tabs section:first-child
+{
+	z-index: 1;
+}
+
+article.tabs section h2
+{
+	position: absolute;
+	font-size: 1em;
+	font-weight: normal;
+	width: 120px;
+	height: 1.8em;
+	top: -1.8em;
+	left: 10px;
+	padding: 0;
+	margin: 0;
+	color: #999;
+	background-color: #ddd;
+	border-radius: 5px 5px 0 0;
+}
+
+article.tabs section:nth-child(2) h2
+{
+	left: 132px;
+}
+
+article.tabs section:nth-child(3) h2
+{
+	left: 254px;
+}
+
+article.tabs section h2 a
+{
+	display: block;
+	width: 100%;
+	line-height: 1.8em;
+	text-align: center;
+	text-decoration: none;
+	color: inherit;
+	outline: 0 none;
+}
+
+article.tabs section:target,
+article.tabs section:target h2
+{
+	color: #333;
+	background-color: #fff;
+	z-index: 2;
+}
+
+article.tabs section,
+article.tabs section h2
+{
+	-webkit-transition: all 500ms ease;
+	-moz-transition: all 500ms ease;
+	-ms-transition: all 500ms ease;
+	-o-transition: all 500ms ease;
+	transition: all 500ms ease;
+}
+/*-- End tab Stuff---*/
+#search {
+    padding-bottom: 5px;
+    padding-top: 5px;
+}
+
+#setstats {
+    overflow-y: auto;
+}
+
+#setstats .set.title {
+	font-weight: bold;
+	font-size:1.2em;
+}
+
+.block.stats {
+	border: 1px solid #ccc;
+	display: inline-block;
+				
+	text-align: center;
+				
+	margin: 2px;
+    padding: 5px;
+}
+
+.rightcolumn {
 	width: 400px;
 	overflow:none;
 				
@@ -73,7 +198,7 @@
 				
 	display: flex;
 	flex-direction: column;
-	flex-wrap: no-wrap;
+	flex-wrap: nowrap;
 	justify-content: flex-start;
 	align-items: flex-start;
 }

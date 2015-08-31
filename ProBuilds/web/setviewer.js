@@ -2,12 +2,14 @@
 var setmanifest = undefined;
 var champions = undefined;
 var items = undefined;
+var spells = undefined;
 
 var setsdiv = undefined;
 var setviewerdiv = undefined;
 var settextarea = undefined;
 var setfilename = undefined;
 var setdownload = undefined;
+var setstatsdiv = undefined;
 var set = undefined;
 
 var loadinghref = undefined;
@@ -24,6 +26,10 @@ function getitem(id) {
     return $.extend(true, items.basic, items.data[id]);
 }
 
+function getspell(name) {
+    return spells.data[name];
+}
+
 function getchampion(key) {
     return champions.data[key];
 }
@@ -37,6 +43,11 @@ function getchampionbyid(id) {
 function getitemimg(id) {
     var item = getitem(id);
     return '<img class="item" alt="' + item.name + '" title="' + item.name + '" src="' + getimg(items.version, item.image.group, item.image.full) + '" />';
+}
+
+function getspellimg(name) {
+    var spell = getspell(name);
+    return '<img class="spell" alt="' + spell.name + '" title="' + spell.name + '" src="' + getimg(spells.version, spell.image.group, spell.image.full) + '" />';
 }
 
 function getchampionimg(key) {
@@ -68,6 +79,7 @@ function handlehash() {
 
     if (currenthash == undefined) {
         setviewerdiv.empty();
+        setstatsdiv.empty();
         settextarea.val();
         setdownload.empty();
         setdownload.attr('href', undefined);
@@ -124,11 +136,17 @@ function getblockhtml(block) {
     var cost = calculateGold(block.items);
 
     var blocktitle = block.type + ' (' + cost + ' Gold)';
+
+    var data = '';
     if (block.showIfSummonerSpell) {
-        blocktitle += ' spell(' + block.showIfSummonerSpell + ')';
+        data += ' data-show-spells="' + block.showIfSummonerSpell + '"';
     }
     if (block.hideIfSummonerSpell) {
-        blocktitle += ' nospell(' + block.hideIfSummonerSpell + ')';
+        if (data != '') {
+            data += ' ';
+        }
+
+        data += 'data-hide-spells="' + block.hideIfSummonerSpell + '"';
     }
 
     blockhtml += '<span class="block title">' + blocktitle + '</span>';
@@ -148,7 +166,165 @@ function getblockhtml(block) {
 
     blockhtml += '</div>';
 
-    return '<div class="block container">' + blockhtml + '</div>';
+    return '<div class="block container" ' + data + '>' + blockhtml + '</div>';
+}
+
+//Add item stats to champion stats
+function addItemStats(championStats, itemStats) {
+
+    championStats.armor += itemStats.FlatArmorMod;
+    championStats.attackdamage += itemStats.FlatPhysicalDamageMod;
+    championStats.attackspeedoffset += itemStats.FlatAttackSpeedMod;
+    championStats.crit += itemStats.FlatCritChanceMod;
+    championStats.hp += itemStats.FlatHPPoolMod;
+    championStats.hpregen += itemStats.FlatHPRegenMod;
+    championStats.movespeed += itemStats.FlatMovementSpeedMod;
+    championStats.mp += itemStats.FlatMPPoolMod;
+    championStats.mpregen += itemStats.FlatMPRegenMod;
+    championStats.spellblock += itemStats.FlatSpellBlockMod;
+
+    return championStats;
+}
+
+//Add item to our item stats
+function combineItemStats(itemStats, item) {
+    var newItemStats = getitem(item.id).stats;
+
+    if (itemStats == undefined) {
+        //Assign the stats and properties
+        itemStats = $.extend(true, {}, newItemStats);
+
+        //Make sure our count is applied to the stats
+        $.each(itemStats, function (key, value) {
+            if (value > 0) {
+                itemStats[key] = value * item.count;
+            }
+        });
+    } else {
+
+        //Add all the stats we can
+        $.each(newItemStats, function (key, value) {
+            //Only care about positive values
+            if (value > 0) {
+
+                //If we don't have the property add it else add the value
+                if (itemStats.hasOwnProperty(key)) {
+                    itemStats[key] += value * item.count;
+                } else {
+                    itemStats[key] = value * item.count;
+                }
+            }
+        });
+    }
+
+    return itemStats;
+}
+
+//Remove properties that are zero
+function cleanItemStats(itemStats) {
+    $.each(itemStats, function (key, value) {
+        if (value <= 0) {
+            delete itemStats[key];
+        }
+    });
+
+    return itemStats;
+}
+
+function getStatshtml(block, championKey) {
+    var blockhtml = '';
+
+    var blocktitle = block.type;
+
+    var data = '';
+    if (block.showIfSummonerSpell) {
+        data += ' data-show-spells="' + block.showIfSummonerSpell + '"';
+    }
+    if (block.hideIfSummonerSpell) {
+        if (data != '') {
+            data += ' ';
+        }
+
+        data += 'data-hide-spells="' + block.hideIfSummonerSpell + '"';
+    }
+
+    blockhtml += '<span class="block title">' + blocktitle + '</span>';
+
+    blockhtml += '<div class="block itemcontainer">';
+
+    //Create stat variables
+    //var championStats = $.extend(true, {}, getchampion(championKey).stats);
+    var itemStats = undefined;
+
+    //Add up all the stats
+    $.each(block.items, function (i, item) {
+        itemStats = combineItemStats(itemStats, item);
+    });
+
+    //Clean empty values
+    itemStats = cleanItemStats(itemStats);
+
+    //Add all the html for the stats
+    $.each(itemStats, function (key, value) {
+        //Get the important part
+        var statText = key.replace("Flat", "").replace("Mod", "").replace("Pool", "");
+
+        //Put some spaces in
+        statText = statText.replace(/([A-Z][a-z]+)/g, ' $1');
+
+        //Check for percent
+        var isPercent = (statText.indexOf("Percent") > -1);
+        var valueText = value;
+        if (isPercent) {
+            statText = statText.replace("Percent", "");
+            valueText = valueText * 100;
+            valueText = Math.round(valueText * 100) / 100;
+            valueText = valueText + '%';
+        }
+
+
+        //Get the html
+        blockhtml += '<div class="block stats">' + statText + ': <font color="#2E64FE">' + valueText + '</font></div>';
+    });
+
+    blockhtml += '</div>';
+
+    return (Object.keys(itemStats).length > 0 ? '<div class="block container" ' + data + '>' + blockhtml + '</div>' : '');
+}
+
+function spellClick(name) {
+    setviewerdiv.find( '.block.container' ).each(function () {
+        var spells = $(this).attr('data-show-spells');
+        if (spells != undefined && spells.search(name) >= 0) {
+            if ($(this).is(':hidden')) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        }
+
+        var spells = $(this).attr('data-hide-spells');
+        if (spells != undefined && spells.search(name) >= 0) {
+            if ($(this).is(':hidden')) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        }
+    });
+}
+
+function getspellshtml(showspells) {
+    var spellshtml = '';
+
+    $.each(showspells, function (name, active) {
+        if (active) {
+            var spellimg = getspellimg(name);
+            spellshtml += '<div class="togglediv" onclick="spellClick(\'' + name + '\')" style="cursor:pointer;">' + spellimg + '</div>';
+        }
+    });
+
+    return spellshtml;
 }
 
 function loadset(sethash, href) {
@@ -162,6 +338,7 @@ function loadset(sethash, href) {
         $("a.set.link[href='" + loadinghref + "']").addClass('selected');
 
         setviewerdiv.empty();
+        setstatsdiv.empty();
 
         set = data;
 
@@ -169,9 +346,44 @@ function loadset(sethash, href) {
         var title = '<span class="set title">' + set.title + '</span>';
         setviewerdiv.append(title);
 
+        //Add the spells buttons
+        var showspells = {};
+        $.each(data.blocks, function (i, block) {
+            if (block.showIfSummonerSpell) {
+                if(!showspells.hasOwnProperty(block.showIfSummonerSpell)) {
+                    showspells[block.showIfSummonerSpell] = true;
+                }
+            }
+        });
+        var spellshtml = getspellshtml(showspells);
+        setviewerdiv.append(spellshtml);
+
+        //Add all the blocks
         $.each(data.blocks, function (i, block) {
             var blockhtml = getblockhtml(block);
             setviewerdiv.append(blockhtml);
+        });
+
+        //Hide all the smite first
+        var name = "SummonerSmite";
+        setviewerdiv.find('.block.container').each(function () {
+            var spells = $(this).attr('data-show-spells');
+            if (spells != undefined && spells.search(name) >= 0) {
+                if ($(this).is(':hidden')) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            }
+        });
+
+        //Add the stats
+        var statsDisclaimer = '<p>All stats are simply a sum of all the items stats in this block.</p>';
+        setstatsdiv.append(statsDisclaimer);
+        var championKey = href.split("/")[1];
+        $.each(data.blocks, function (i, block) {
+            var blockhtml = getStatshtml(block, championKey);
+            setstatsdiv.append(blockhtml);
         });
 
         // Set text area display
@@ -195,6 +407,7 @@ function loadset(sethash, href) {
 function initializesets() {
     setsdiv.empty();
     setviewerdiv.empty();
+    setstatsdiv.empty();
 
     // Create links
     var allsets = $.map(setmanifest.sets, function (value, index) {
@@ -251,6 +464,12 @@ function initChampions() {
 function initItems() {
     $.getJSON('items.json', function (data) {
         items = data;
+    }).done(initSpells);
+}
+
+function initSpells() {
+    $.getJSON('summonerspells.json', function (data) {
+        spells = data;
     }).done(initManifest);
 }
 
@@ -269,5 +488,6 @@ $(function () {
     settextarea = $('#settextarea');
     setfilename = $('#setfilename');
     setdownload = $('#setdownload');
+    setstatsdiv = $('#setstats');
     init();
 });
