@@ -293,12 +293,22 @@ function getStatshtml(block, championKey) {
 }
 
 function spellClick() {
-    var key = $(this).attr('data-spell');
     $(this).toggleClass('active');
+
+    updateSpellBlockVisibility.call($(this));
+}
+
+function updateSpellBlockVisibility() {
+    var key = $(this).attr('data-spell');
     var active = $(this).hasClass('active');
 
     setviewerdiv.find(".block.container[data-show-spells='" + key + "']").toggle(active);
     setviewerdiv.find(".block.container[data-hide-spells='" + key + "']").toggle(!active);
+
+    if (setstatsdiv != undefined) {
+        setstatsdiv.find(".block.container[data-show-spells='" + key + "']").toggle(active);
+        setstatsdiv.find(".block.container[data-hide-spells='" + key + "']").toggle(!active);
+    }
 }
 
 function getspellshtml(showspells) {
@@ -360,11 +370,7 @@ function loadset(sethash, href) {
 
         //Update the block visibility based on spells
         setviewerdiv.find('img.spell').each(function () {
-            var key = $(this).attr('data-spell');
-            var active = $(this).hasClass('active');
-
-            setviewerdiv.find(".block.container[data-show-spells='" + key + "']").toggle(active);
-            setviewerdiv.find(".block.container[data-hide-spells='" + key + "']").toggle(!active);
+            updateSpellBlockVisibility.call($(this));
         });
 
         //Add the stats

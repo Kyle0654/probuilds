@@ -62,7 +62,7 @@
 }
 
 #sets > a.selected {
-    background-color:red;
+    background-color:rgb(204, 204, 204);
 }
 
 #sets > a > img {
