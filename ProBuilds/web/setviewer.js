@@ -79,7 +79,11 @@ function handlehash() {
 
     if (currenthash == undefined) {
         setviewerdiv.empty();
-        setstatsdiv.empty();
+
+        if(setstatsdiv != undefined){
+            setstatsdiv.empty();
+        }
+
         settextarea.val();
         setdownload.empty();
         setdownload.attr('href', undefined);
@@ -292,6 +296,39 @@ function getStatshtml(block, championKey) {
     return (Object.keys(itemStats).length > 0 ? '<div class="block container" ' + data + '>' + blockhtml + '</div>' : '');
 }
 
+//Get html text for a tab
+//arg uniqueName A unique name used for the id of this tab
+//arg title Title text for the tab
+//arg contentHTML (optional) html text to go within this tab, if not supplied you need to insert it later with javascript using $("#source").appendTo("#tab-<uniqueName>");
+function getTabHTML(uniqueName, title, contentHTML){
+    var tab = '<section id="tab-' + uniqueName + '">';
+    tab += '<h2><a href="#tab-' + uniqueName + '">' + title + '</a></h2>';
+    if(contentHTML != undefined && contentHTML != '') {
+        tab += contentHTML;
+    }
+    tab += '</section>';
+
+    return tab;
+}
+
+//Add a tabs panel on the right inserting the download content into a tab
+//and adding a stats tab
+function buildTabsPane() {
+
+    //Create the tabs
+    var tabsHTML = '<article class="tabs">';
+    tabsHTML += getTabHTML("download", "Download");
+    tabsHTML += getTabHTML("stats", "Stats", '<div class="rightcolumn" id="setstats"></div>');
+    tabsHTML += '</article>';
+
+    //Insert the tabs under root and below the content we will insert into a tab
+    $("#settext").after(tabsHTML);
+    $("#settext").appendTo("#tab-download");
+
+    //Set our variable
+    setstatsdiv = $('#setstats');
+}
+
 function spellClick() {
     $(this).toggleClass('active');
 
@@ -341,7 +378,9 @@ function loadset(sethash, href) {
         var champimg = getchampionimg(champkey);
 
         setviewerdiv.empty();
-        setstatsdiv.empty();
+        if(setstatsdiv != undefined){
+            setstatsdiv.empty();
+        }
 
         set = data;
 
@@ -368,18 +407,20 @@ function loadset(sethash, href) {
             setviewerdiv.append(blockhtml);
         });
 
+        //Add the stats
+        if(setstatsdiv != undefined){
+            var statsDisclaimer = '<p>All stats are simply a sum of all the items stats in this block.</p>';
+            setstatsdiv.append(statsDisclaimer);
+            var championKey = href.split("/")[1];
+            $.each(data.blocks, function (i, block) {
+                var blockhtml = getStatshtml(block, championKey);
+                setstatsdiv.append(blockhtml);
+            });
+        }
+
         //Update the block visibility based on spells
         setviewerdiv.find('img.spell').each(function () {
             updateSpellBlockVisibility.call($(this));
-        });
-
-        //Add the stats
-        var statsDisclaimer = '<p>All stats are simply a sum of all the items stats in this block.</p>';
-        setstatsdiv.append(statsDisclaimer);
-        var championKey = href.split("/")[1];
-        $.each(data.blocks, function (i, block) {
-            var blockhtml = getStatshtml(block, championKey);
-            setstatsdiv.append(blockhtml);
         });
 
         // Set text area display
@@ -403,7 +444,9 @@ function loadset(sethash, href) {
 function initializesets() {
     setsdiv.empty();
     setviewerdiv.empty();
-    setstatsdiv.empty();
+    if(setstatsdiv != undefined){
+        setstatsdiv.empty();
+    }
 
     // Create links
     var allsets = $.map(setmanifest.sets, function (value, index) {
@@ -484,6 +527,6 @@ $(function () {
     settextarea = $('#settextarea');
     setfilename = $('#setfilename');
     setdownload = $('#setdownload');
-    setstatsdiv = $('#setstats');
+    //buildTabsPane();
     init();
 });
