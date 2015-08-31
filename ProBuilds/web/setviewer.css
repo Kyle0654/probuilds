@@ -44,6 +44,10 @@
     width: 95%;
 }
 
+#sets > a.selected {
+    background-color:red;
+}
+
 #sets > a > img {
     float: left;
     margin-right: 0.2em;

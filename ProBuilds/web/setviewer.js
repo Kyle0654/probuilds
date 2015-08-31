@@ -158,6 +158,9 @@ function loadset(sethash, href) {
             return;
         }
 
+        $('a.set.link').removeClass('selected');
+        $("a.set.link[href='" + loadinghref + "']").addClass('selected');
+
         setviewerdiv.empty();
 
         set = data;
