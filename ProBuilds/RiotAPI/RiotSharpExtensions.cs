@@ -59,5 +59,36 @@ namespace ProBuilds
                 return componentItem.BuildsInto(item);
             });
         }
+
+        /// <summary>
+        /// Gets the final build paths of this item.
+        /// </summary>
+        /// <param name="component"></param>
+        public static IEnumerable<ItemStatic> FinalBuilds(this ItemStatic component)
+        {
+            if (component.Into == null)
+                return Enumerable.Empty<ItemStatic>();
+
+            var builds = component.Into.Select(id => StaticDataStore.Items.Items[id]);
+
+            return builds.Where(item => item.Into == null || item.Into.Count == 0).Concat(
+                builds.SelectMany(comp => comp.FinalBuilds())
+            );
+        }
+
+        /// <summary>
+        /// Gets all recipe components that build into this item.
+        /// </summary>
+        public static IEnumerable<ItemStatic> AllComponents(this ItemStatic item)
+        {
+            if (item.From == null)
+                return Enumerable.Empty<ItemStatic>();
+
+            var baseItems = item.From.Select(strid => { int o; return int.TryParse(strid, out o) ? o : -1; })
+                .Where(i => i != -1)
+                .Select(i => StaticDataStore.Items.Items[i]);
+
+            return baseItems.Concat(baseItems.SelectMany(i => i.AllComponents()));
+        }
     }
 }

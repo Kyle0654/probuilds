@@ -91,7 +91,7 @@ namespace ProBuilds.SetBuilder
                 {
                     items = stats.Purchases[blockInfo.Stage].Select(entry => new ItemSet.Item(entry.ItemId.ToString())
                     {
-                        count = 1, // TODO: figure out count again
+                        count = 1,
                         percentage = entry.Percentage
                     }).ToList()
                 })

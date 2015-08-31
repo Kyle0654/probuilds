@@ -1,4 +1,5 @@
 using ProBuilds.SetBuilder;
+using RiotSharp.StaticDataEndpoint;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -71,10 +72,7 @@ namespace ProBuilds.BuildPath
             // Compute build path includes
             DetermineBuildPathIncludes(purchaseDeterminations);
 
-            // TODO: Eliminate redundant purchases / group build path purchases where appropriate
-
-
-            // Generate final include list
+            // Generate stage-based include list
             Purchases = purchaseDeterminations.Values
                 .Where(determination => determination.Include)
                 .GroupBy(determination => determination.GameStage)
@@ -82,6 +80,48 @@ namespace ProBuilds.BuildPath
                     g => g.Key,
                     g => g.Select(d => d.Stats).OrderBy(s => s.AveragePurchaseTimeSeconds).ToList()
                 );
+
+            // If early items contain items that build into a mid-game item, migrate the mid-game item to early game
+            if (Purchases.ContainsKey(GameStage.Early) && Purchases.ContainsKey(GameStage.Mid))
+            {
+                // Check if a full build path exists in the early stage already
+                bool hasFullEarlyPath = Purchases[GameStage.Early].Any(p =>
+                    p.FinalBuildItemPercentage.Any(finalItem => Purchases[GameStage.Early].Any(i => finalItem.Key.ItemId == i.ItemId)));
+
+                if (!hasFullEarlyPath)
+                {
+                    // Find the first early game item that builds into something in mid-game
+                    var earlyItem = Purchases[GameStage.Early].FirstOrDefault(p =>
+                        p.FinalBuildItemPercentage.Any(finalItem => Purchases[GameStage.Mid].Any(i => finalItem.Key.ItemId == i.ItemId)));
+
+                    if (earlyItem != null)
+                    {
+                        // Find the mid-game item to move
+                        var midItemIndex = Purchases[GameStage.Mid].FindIndex(i => earlyItem.FinalBuildItemPercentage.Any(kvp => kvp.Key.ItemId == i.ItemId));
+                        var midItem = Purchases[GameStage.Mid][midItemIndex];
+
+                        // Move the mid-game item
+                        Purchases[GameStage.Early].Add(midItem);
+                        Purchases[GameStage.Mid].RemoveAt(midItemIndex);
+                    }
+                }
+            }
+
+            // If start items add up to less than 475, try to absorb first early item
+            if (Purchases.ContainsKey(GameStage.Start) && Purchases.ContainsKey(GameStage.Early))
+            {
+                int startCost = Purchases[GameStage.Start].Sum(d => StaticDataStore.Items.Items[d.ItemId].Gold.TotalPrice);
+                if (startCost < 475)
+                {
+                    ItemPurchaseStats d = Purchases[GameStage.Early].FirstOrDefault();
+                    if (StaticDataStore.Items.Items[d.ItemId].Gold.TotalPrice + startCost <= 475)
+                    {
+                        // Move item
+                        Purchases[GameStage.Start].Add(d);
+                        Purchases[GameStage.Early].RemoveAt(0);
+                    }
+                }
+            }
 
             // Move consumables to end of each section
             foreach (GameStage stage in Purchases.Keys)
@@ -102,6 +142,27 @@ namespace ProBuilds.BuildPath
                     }
                 );
                 purchaseList.AddRange(consumables);
+            }
+
+            // Remove components in mid/late game
+            var removeComponentsStages = new[] { GameStage.Late, GameStage.Mid };
+            IEnumerable<ItemStatic> componentItems = Enumerable.Empty<ItemStatic>();
+            foreach (GameStage stage in removeComponentsStages)
+            {
+                if (!Purchases.ContainsKey(stage))
+                    continue;
+
+                var allComponents = Purchases[stage]
+                    .Select(p => StaticDataStore.Items.Items[p.ItemId])
+                    .Where(i => i.Into == null || i.Into.Count == 0)
+                    .SelectMany(i => i.AllComponents())
+                    .Where(i => i.Tags == null || (!i.Tags.Contains("Boots") && !i.Tags.Contains("Trinket")))
+                    .Distinct();
+
+                componentItems = componentItems.Concat(allComponents).Distinct().ToList();
+
+                // Remove any component items
+                Purchases[stage].RemoveAll(i => componentItems.Any(c => c.Id == i.ItemId));
             }
         }
 

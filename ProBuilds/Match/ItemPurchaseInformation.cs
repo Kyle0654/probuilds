@@ -60,7 +60,15 @@ namespace ProBuilds.Match
         /// <summary>
         /// Returns the final purchase that this item eventually combined into.
         /// </summary>
-        public ItemPurchaseInformation FinalBuildItem { get { return BuildsInto == null ? null : BuildsInto.FinalBuildItem; } }
+        public ItemPurchaseInformation FinalBuildItem
+        {
+            get
+            {
+                return BuildsInto == null ? null :
+                    BuildsInto.FinalBuildItem == null ? BuildsInto :
+                    BuildsInto.FinalBuildItem;
+            }
+        }
 
         /// <summary>
         /// Whether or not this item eventually builds into another within this match.
