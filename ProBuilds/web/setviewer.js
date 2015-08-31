@@ -62,7 +62,7 @@ function getSetKey(set) {
 }
 
 function gethash() {
-    if (window.location.hash == undefined) {
+    if (!window.location.hash) {
         return undefined;
     }
 
@@ -84,9 +84,13 @@ function handlehash() {
             setstatsdiv.empty();
         }
 
-        settextarea.val();
+        settextarea.val('');
         setdownload.empty();
+        setfilename.text('');
         setdownload.attr('href', undefined);
+
+        //Clear selection
+        $('a.set.link').removeClass('selected');
     } else {
         var a = $('a.set.link').filter(function () { return $(this).attr('data-name') == currenthash; }).first();
         if (a != undefined) {
@@ -119,6 +123,11 @@ $(document).ready(function () {
                 count++;
             }
         });
+    });
+
+    $('#help').click(function () {
+        window.location.hash = '';
+        handlehash();
     });
 });
 
