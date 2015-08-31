@@ -6,21 +6,37 @@
 		<script type="text/javascript" src="setviewer.js"></script>
 	</head>
 	<body>
+        <div id="banner">
+            <h1>Pro Item Sets</h1>
+            <p> Help </p>
+            <div style="clear: both;"></div>
+        </div>
 		<div id="root">
             <div class="leftcol">
+                <a id="allsetsdownload" href="allprosets.zip">All Item Sets Download</a>
                 <div id="search">
                     <label for="sets">Filter: </label>
                     <input id="setssearch" />
                 </div>
-                <br />
-            <div id="sets"></div>
+                <div id="sets"></div>
             </div>
             <div id="setviewer"></div>
-		    <div id="settext">
-			    <span id="setfilename"></span>
-			    <a id="setdownload">Download</a>
-			    <textarea id="settextarea" readonly></textarea>
-            </div>
+            <article class="tabs">
+                <section id="tab-download">
+                    <h2><a href="#tab-download">Download</a></h2>
+                    <div class="rightcolumn" id="settext">
+                        <span id="setfilename"></span>
+                        <a id="setdownload">Download</a>
+                        <textarea id="settextarea" readonly></textarea>
+                    </div>
+                </section>
+
+                <section id="tab-stats">
+                    <h2><a href="#tab-stats">Stats</a></h2>
+                    <div class="rightcolumn" id="setstats">
+                    </div>
+                </section>
+            </article>
 		</div>
 		<div id="footer">Pro Item Sets isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends © Riot Games, Inc.</div>
 	</body>
