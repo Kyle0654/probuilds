@@ -30,6 +30,8 @@
 
 #banner > a {
     float:right;
+    padding-top: 35px;
+    color:blue;
 }
 
 #allsetsdownload {
