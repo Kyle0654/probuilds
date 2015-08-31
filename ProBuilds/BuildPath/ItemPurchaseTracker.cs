@@ -9,6 +9,59 @@ namespace ProBuilds.BuildPath
 {
     public class ItemPurchaseTrackerData
     {
+        /// <summary>
+        /// Key for a purchase
+        /// </summary>
+        public struct ItemPurchaseKey
+        {
+            public int ItemId;
+            public int Number;
+
+            public ItemPurchaseKey(int itemId, int number)
+            {
+                ItemId = itemId;
+                Number = number;
+            }
+
+            public ItemPurchaseKey(ItemPurchaseInformation purchase)
+            {
+                ItemId = purchase.ItemId;
+                Number = purchase.Number;
+            }
+
+            public ItemPurchaseKey(ItemPurchaseTrackerData tracker)
+            {
+                ItemId = tracker.ItemId;
+                Number = tracker.Number;
+            }
+
+            public override bool Equals(object obj)
+            {
+                if (!(obj is ItemPurchaseKey))
+                    return false;
+
+                ItemPurchaseKey other = (ItemPurchaseKey)obj;
+                return
+                    ItemId == other.ItemId &&
+                    Number == other.Number;
+            }
+
+            public override int GetHashCode()
+            {
+                return Tuple.Create(ItemId, Number).GetHashCode();
+            }
+
+            public static bool operator ==(ItemPurchaseKey a, ItemPurchaseKey b)
+            {
+               return a.Equals(b);
+            }
+
+            public static bool operator !=(ItemPurchaseKey a, ItemPurchaseKey b)
+            {
+                return !a.Equals(b);
+            }
+        }
+
         public int ItemId;
 
         public int Number;
@@ -20,20 +73,20 @@ namespace ProBuilds.BuildPath
         private long InnerTowerKills;
         private long BaseTowerKills;
 
-        public long AverageKills { get { return Kills / Count; } }
-        public long AverageTowerKills { get { return TowerKills / Count; } }
-        public long AverageInnerTowerKills { get { return InnerTowerKills / Count; } }
-        public long AverageBaseTowerKills { get { return BaseTowerKills / Count; } }
+        public float AverageKills { get { return (float)Kills / (float)Count; } }
+        public float AverageTowerKills { get { return (float)TowerKills / (float)Count; } }
+        public float AverageInnerTowerKills { get { return (float)InnerTowerKills / (float)Count; } }
+        public float AverageBaseTowerKills { get { return (float)BaseTowerKills / (float)Count; } }
 
         /// <summary>
-        /// How many times this item was built into other items.
+        /// How many times this item was built into other items (by the number of the other item that has been bought).
         /// </summary>
-        public Dictionary<int, long> BuiltInto = new Dictionary<int, long>();
+        public Dictionary<ItemPurchaseKey, long> BuiltInto = new Dictionary<ItemPurchaseKey, long>();
 
         /// <summary>
-        /// How many times this item was eventually built into a final item.
+        /// How many times this item was eventually built into a final item (by the number of the other item that has been bought).
         /// </summary>
-        public Dictionary<int, long> FinalBuildItem = new Dictionary<int, long>();
+        public Dictionary<ItemPurchaseKey, long> FinalBuildItem = new Dictionary<ItemPurchaseKey, long>();
 
         public ItemPurchaseTrackerData(int itemId) { ItemId = itemId; }
 
@@ -49,11 +102,11 @@ namespace ProBuilds.BuildPath
             BaseTowerKills = purchase.GameState.TotalTowerKillsByType(TowerType.BaseTurret);
 
             if (purchase.BuildsInto != null)
-                BuiltInto.Add(purchase.BuildsInto.ItemId, 1);
+                BuiltInto.Add(new ItemPurchaseKey(purchase.BuildsInto), 1);
 
             var finalItem = purchase.FinalBuildItem;
             if (finalItem != null)
-                FinalBuildItem.Add(finalItem.ItemId, 1);
+                FinalBuildItem.Add(new ItemPurchaseKey(finalItem), 1);
         }
 
         public void Increment(ItemPurchaseInformation purchase)
@@ -68,26 +121,27 @@ namespace ProBuilds.BuildPath
 
             if (purchase.BuildsInto != null)
             {
-                if (BuiltInto.ContainsKey(purchase.BuildsIntoItemId))
+                var buildsIntoKey = new ItemPurchaseKey(purchase.BuildsInto);
+                if (BuiltInto.ContainsKey(buildsIntoKey))
                 {
-                    ++BuiltInto[purchase.BuildsIntoItemId];
+                    ++BuiltInto[buildsIntoKey];
                 }
                 else
                 {
-                    BuiltInto[purchase.BuildsIntoItemId] = 1;
+                    BuiltInto[buildsIntoKey] = 1;
                 }
             }
 
-            var finalItem = purchase.FinalBuildItem;
-            if (finalItem != null)
+            if (purchase.FinalBuildItem != null)
             {
-                if (FinalBuildItem.ContainsKey(finalItem.ItemId))
+                var finalBuildKey = new ItemPurchaseKey(purchase.FinalBuildItem);
+                if (FinalBuildItem.ContainsKey(finalBuildKey))
                 {
-                    ++FinalBuildItem[finalItem.ItemId];
+                    ++FinalBuildItem[finalBuildKey];
                 }
                 else
                 {
-                    FinalBuildItem[finalItem.ItemId] = 1;
+                    FinalBuildItem[finalBuildKey] = 1;
                 }
             }
         }
@@ -102,6 +156,9 @@ namespace ProBuilds.BuildPath
             TowerKills = other.TowerKills;
             InnerTowerKills = other.InnerTowerKills;
             BaseTowerKills = other.BaseTowerKills;
+
+            BuiltInto = new Dictionary<ItemPurchaseKey, long>(other.BuiltInto);
+            FinalBuildItem = new Dictionary<ItemPurchaseKey, long>(other.FinalBuildItem);
         }
 
         public ItemPurchaseTrackerData Clone()
@@ -153,9 +210,9 @@ namespace ProBuilds.BuildPath
         /// <summary>
         /// Increments the count of number of times an item was purchased "number" times in a match, with average purchase time.
         /// </summary>
-        public void Increment(int number, ItemPurchaseInformation purchase)
+        public void Increment(ItemPurchaseInformation purchase)
         {
-            PerMatchCounts.AddOrUpdate(number,
+            PerMatchCounts.AddOrUpdate(purchase.Number,
                 id => new ItemPurchaseTrackerData(ItemId, id, purchase),
                 (id, tracker) => { tracker.Increment(purchase); return tracker; }
             );

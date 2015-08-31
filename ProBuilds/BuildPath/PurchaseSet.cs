@@ -45,6 +45,9 @@ namespace ProBuilds.BuildPath
             // Process purchases to determine "builds into" information for each purchase
             AddBuildsIntoInformation(purchases);
 
+            // Track how many times items were purchased
+            TrackPurchaseCounts(purchases);
+
             // Use to test that build tree information is correctly generated
             ///////
             //Action<ItemPurchaseInformation> writePurchase = null;
@@ -193,35 +196,44 @@ namespace ProBuilds.BuildPath
         }
 
         /// <summary>
+        /// Mark the number of times each item has been purchase at time of purchase.
+        /// </summary>
+        private void TrackPurchaseCounts(List<ItemPurchaseInformation> purchases)
+        {
+            purchases.Where(purchase => purchase.EventType == EventType.ItemPurchased)
+                .GroupBy(purchase => purchase.ItemId)
+                .ToList()
+                .ForEach(g =>
+                {
+                    int count = g.Count();
+                    for (int i = 0; i < count; ++i)
+                    {
+                        g.ElementAt(i).Number = i + 1;
+                    }
+                });
+        }
+
+        /// <summary>
         /// Track purchases to generate set-generation information.
         /// </summary>
         private void TrackPurchases(List<ItemPurchaseInformation> purchases)
         {
-            Dictionary<int, int> itemPurchaseCounts = new Dictionary<int, int>();
             purchases.ForEach(purchase =>
             {
                 if (purchase.EventType != EventType.ItemPurchased)
                     return;
 
-                int count;
-                if (!itemPurchaseCounts.TryGetValue(purchase.ItemId, out count))
-                {
-                    count = 0;
-                }
-
-                ++count;
-                itemPurchaseCounts[purchase.ItemId] = count;
-
+                // Update the tracker
                 ItemPurchases.AddOrUpdate(purchase.ItemId,
                     id =>
                     {
                         var tracker = new ItemPurchaseTracker(id);
-                        tracker.Increment(count, purchase);
+                        tracker.Increment(purchase);
                         return tracker;
                     },
                     (id, tracker) =>
                     {
-                        tracker.Increment(count, purchase);
+                        tracker.Increment(purchase);
                         return tracker;
                     }
                 );

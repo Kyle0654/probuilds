@@ -51,7 +51,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BuildPath\ChampionPurchaseStats.cs" />
+    <Compile Include="BuildPath\ChampionPurchaseCalculator.cs" />
     <Compile Include="BuildPath\ChampionPurchaseTracker.cs" />
     <Compile Include="BuildPath\ItemPurchaseTracker.cs" />
     <Compile Include="BuildPath\ItemPurchaseStats.cs" />

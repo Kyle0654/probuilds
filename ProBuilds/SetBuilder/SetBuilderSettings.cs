@@ -32,13 +32,24 @@ namespace ProBuilds.SetBuilder
         /// <summary>
         /// Minimum percentage of times an item must be built to be included in a block.
         /// </summary>
-        public static class ItemMinimumPurchasePercentage
+        public static Dictionary<GameStage, float> ItemMinimumPurchasePercentage = new Dictionary<GameStage, float>()
         {
-            public const float Start = 0.4f;
-            public const float Early = 0.3f;
-            public const float Mid = 0.25f;
-            public const float Late = 0.1f;
-        }
+            { GameStage.Start, 0.4f },
+            { GameStage.Early, 0.3f },
+            { GameStage.Mid, 0.25f },
+            { GameStage.Late, 0.1f }
+        };
+
+        /// <summary>
+        /// Upgrades from a base item that should always be included.
+        /// </summary>
+        public const int BuildPathAlwaysIncludeCount = 1;
+
+        /// <summary>
+        /// Minimum percentage of times an item must be upgraded to in order to include.
+        /// </summary>
+        /// <remarks>This is above the "always include at least one" requirement.</remarks>
+        public const float BuildPathItemMinimumPurchasePercentage = 0.25f;
 
         /// <summary>
         /// Whether or not an item was purchased, on average, during the start of the game.
@@ -46,9 +57,9 @@ namespace ProBuilds.SetBuilder
         public static bool IsStartPurchase(ItemPurchaseTrackerData tracker)
         {
             return
-                tracker.AveragePurchaseTimeSeconds < 90.0 &&
-                tracker.AverageKills == 0 &&
-                tracker.AverageTowerKills == 0;
+                tracker.AveragePurchaseTimeSeconds <= 90.0 &&
+                tracker.AverageKills < 1.0f &&
+                tracker.AverageTowerKills < 1.0;
         }
 
         /// <summary>
@@ -58,7 +69,7 @@ namespace ProBuilds.SetBuilder
         {
             return
                 !IsStartPurchase(tracker) &&
-                tracker.AverageTowerKills == 0;
+                tracker.AverageTowerKills < 1.0f;
         }
 
         /// <summary>
@@ -69,8 +80,8 @@ namespace ProBuilds.SetBuilder
             return
                 !IsStartPurchase(tracker) &&
                 !IsEarlyPurchase(tracker) &&
-                tracker.AverageInnerTowerKills < 3 &&
-                tracker.AverageBaseTowerKills == 0;
+                tracker.AverageInnerTowerKills < 2.5f && // Getting too close to 3 puts a lot of items into the mid-game bucket
+                tracker.AverageBaseTowerKills < 1.0f;
         }
 
         /// <summary>
@@ -82,6 +93,18 @@ namespace ProBuilds.SetBuilder
                 !IsStartPurchase(tracker) &&
                 !IsEarlyPurchase(tracker) &&
                 !IsMidPurchase(tracker);
+        }
+
+        /// <summary>
+        /// Gets the game stage a purchase took place in.
+        /// </summary>
+        public static GameStage GetGameStage(ItemPurchaseTrackerData tracker)
+        {
+            return
+                IsStartPurchase(tracker) ? GameStage.Start :
+                IsEarlyPurchase(tracker) ? GameStage.Early :
+                IsMidPurchase(tracker) ? GameStage.Mid :
+                GameStage.Late;
         }
     }
 }

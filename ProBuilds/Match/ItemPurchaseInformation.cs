@@ -24,6 +24,11 @@ namespace ProBuilds.Match
         public GameState GameState;
 
         /// <summary>
+        /// The number of times this item has been bought after this purchase.
+        /// </summary>
+        public int Number;
+
+        /// <summary>
         /// The item in this event (or null if the item doesn't exist, or this is an undo).
         /// </summary>
         public ItemStatic Item
@@ -55,7 +60,7 @@ namespace ProBuilds.Match
         /// <summary>
         /// Returns the final purchase that this item eventually combined into.
         /// </summary>
-        public ItemPurchaseInformation FinalBuildItem { get { return BuildsInto == null ? this : BuildsInto.FinalBuildItem; } }
+        public ItemPurchaseInformation FinalBuildItem { get { return BuildsInto == null ? null : BuildsInto.FinalBuildItem; } }
 
         /// <summary>
         /// Whether or not this item eventually builds into another within this match.
@@ -125,7 +130,7 @@ namespace ProBuilds.Match
             }
             else
             {
-                return string.Format("{0}: {1} [{2}]", EventType.ToString(), ItemId, StaticDataStore.Items.Items[ItemId].Name);
+                return string.Format("{0}: {1} ({2}) [{3}]", EventType.ToString(), ItemId, Number, StaticDataStore.Items.Items[ItemId].Name);
             }
         }
     }

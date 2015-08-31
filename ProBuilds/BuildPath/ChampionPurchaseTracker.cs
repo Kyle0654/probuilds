@@ -24,27 +24,30 @@ namespace ProBuilds.BuildPath
         /// </summary>
         public ConcurrentDictionary<PurchaseSetKey, PurchaseSet> PurchaseSets = new ConcurrentDictionary<PurchaseSetKey, PurchaseSet>();
 
-        /// <summary>
-        /// Get stats for this champion's purchases.
-        /// </summary>
-        public Dictionary<PurchaseSetKey, ChampionPurchaseStats> GetStats()
-        {
-            return PurchaseSets.ToDictionary(
-                kvp => kvp.Key,
-                kvp => new ChampionPurchaseStats(kvp.Value));
-        }
-
         public ChampionPurchaseTracker(int championId)
         {
             ChampionId = championId;
         }
 
+        /// <summary>
+        /// Track purchases for this champion.
+        /// </summary>
         public void Process(ChampionMatchItemPurchases matchPurchases)
         {
             // Create or get the purchase set for this match
             PurchaseSetKey key = new PurchaseSetKey(matchPurchases);
             PurchaseSet set = PurchaseSets.GetOrAdd(key, k => new PurchaseSet(k));
             set.Process(matchPurchases);
+        }
+
+        /// <summary>
+        /// Get stats for this champion's purchases.
+        /// </summary>
+        public Dictionary<PurchaseSetKey, ChampionPurchaseCalculator> GetStats()
+        {
+            return PurchaseSets.ToDictionary(
+                kvp => kvp.Key,
+                kvp => new ChampionPurchaseCalculator(kvp.Value));
         }
     }
 }
