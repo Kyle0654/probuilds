@@ -308,7 +308,6 @@ function getspellshtml(showspells) {
         if (active) {
             var spellimg = getspellimg(name);
             spellshtml += spellimg;
-            //spellshtml += '<div class="togglediv" onclick="spellClick(\'' + name + '\')">' + spellimg + '</div>';
         }
     });
 
@@ -359,17 +358,13 @@ function loadset(sethash, href) {
             setviewerdiv.append(blockhtml);
         });
 
-        //Hide all the smite first
-        var name = "SummonerSmite";
-        setviewerdiv.find('.block.container').each(function () {
-            var spells = $(this).attr('data-show-spells');
-            if (spells != undefined && spells.search(name) >= 0) {
-                if ($(this).is(':hidden')) {
-                    $(this).show();
-                } else {
-                    $(this).hide();
-                }
-            }
+        //Update the block visibility based on spells
+        setviewerdiv.find('img.spell').each(function () {
+            var key = $(this).attr('data-spell');
+            var active = $(this).hasClass('active');
+
+            setviewerdiv.find(".block.container[data-show-spells='" + key + "']").toggle(active);
+            setviewerdiv.find(".block.container[data-hide-spells='" + key + "']").toggle(!active);
         });
 
         //Add the stats
