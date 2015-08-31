@@ -213,15 +213,19 @@ article.tabs section h2
 				
 	flex: 1;
 }
-			
+
+/* Set Viewer */			
 #setviewer .set.title {
 	font-weight: bold;
 	font-size:1.2em;
+
+    float:left;
 }
 		
 .block.container {
 	border: 1px solid black;
 	padding: 2px;
+    clear:both;
 }
 			
 .block.title {
@@ -257,3 +261,22 @@ article.tabs section h2
 				
 img.item { width:32px; height:32px; }
 img.champion { width:32px; height:32px; }
+
+/* Spells */
+#setviewer img.spell
+{
+    width:32px;
+    height:32px;
+    cursor:pointer;
+    -webkit-filter: grayscale(1);
+    filter: grayscale(1);
+
+    float:right;
+    clear:none;
+}
+
+#setviewer img.spell.active
+{
+    -webkit-filter: grayscale(0);
+    filter: grayscale(0);
+}

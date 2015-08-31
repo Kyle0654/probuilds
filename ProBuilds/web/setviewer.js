@@ -47,7 +47,7 @@ function getitemimg(id) {
 
 function getspellimg(name) {
     var spell = getspell(name);
-    return '<img class="spell" alt="' + spell.name + '" title="' + spell.name + '" src="' + getimg(spells.version, spell.image.group, spell.image.full) + '" />';
+    return '<img class="spell" data-spell="' + spell.key + '" alt="' + spell.name + '" title="' + spell.name + '" src="' + getimg(spells.version, spell.image.group, spell.image.full) + '" />';
 }
 
 function getchampionimg(key) {
@@ -292,26 +292,13 @@ function getStatshtml(block, championKey) {
     return (Object.keys(itemStats).length > 0 ? '<div class="block container" ' + data + '>' + blockhtml + '</div>' : '');
 }
 
-function spellClick(name) {
-    setviewerdiv.find( '.block.container' ).each(function () {
-        var spells = $(this).attr('data-show-spells');
-        if (spells != undefined && spells.search(name) >= 0) {
-            if ($(this).is(':hidden')) {
-                $(this).show();
-            } else {
-                $(this).hide();
-            }
-        }
+function spellClick() {
+    var key = $(this).attr('data-spell');
+    $(this).toggleClass('active');
+    var active = $(this).hasClass('active');
 
-        var spells = $(this).attr('data-hide-spells');
-        if (spells != undefined && spells.search(name) >= 0) {
-            if ($(this).is(':hidden')) {
-                $(this).show();
-            } else {
-                $(this).hide();
-            }
-        }
-    });
+    setviewerdiv.find(".block.container[data-show-spells='" + key + "']").toggle(active);
+    setviewerdiv.find(".block.container[data-hide-spells='" + key + "']").toggle(!active);
 }
 
 function getspellshtml(showspells) {
@@ -320,7 +307,8 @@ function getspellshtml(showspells) {
     $.each(showspells, function (name, active) {
         if (active) {
             var spellimg = getspellimg(name);
-            spellshtml += '<div class="togglediv" onclick="spellClick(\'' + name + '\')" style="cursor:pointer;">' + spellimg + '</div>';
+            spellshtml += spellimg;
+            //spellshtml += '<div class="togglediv" onclick="spellClick(\'' + name + '\')">' + spellimg + '</div>';
         }
     });
 
@@ -335,7 +323,13 @@ function loadset(sethash, href) {
         }
 
         $('a.set.link').removeClass('selected');
-        $("a.set.link[href='" + loadinghref + "']").addClass('selected');
+
+        var setlink = $("a.set.link[href='" + loadinghref + "']");
+        setlink.addClass('selected');
+
+        var champkey = setlink.attr('data-champ-key');
+        var champion = getchampion(champkey);
+        var champimg = getchampionimg(champkey);
 
         setviewerdiv.empty();
         setstatsdiv.empty();
@@ -343,7 +337,7 @@ function loadset(sethash, href) {
         set = data;
 
         // Create set display
-        var title = '<span class="set title">' + set.title + '</span>';
+        var title = '<span class="set title">' + champimg + ' ' + champion.name + ' ' + set.title + '</span>';
         setviewerdiv.append(title);
 
         //Add the spells buttons
@@ -357,6 +351,7 @@ function loadset(sethash, href) {
         });
         var spellshtml = getspellshtml(showspells);
         setviewerdiv.append(spellshtml);
+        setviewerdiv.find('img.spell').click(spellClick);
 
         //Add all the blocks
         $.each(data.blocks, function (i, block) {
@@ -434,7 +429,7 @@ function initializesets() {
             var seturi = setdata.file;
             var settitle = setdata.title;
 
-            setsdiv.append('<a data-name="' + setkey + '" class="set link" href="' + seturi + '" download>'
+            setsdiv.append('<a data-name="' + setkey + '" data-champ-key="' + champkey + '" class="set link" href="' + seturi + '" download>'
                 + champimg + ' '
                 + '<span class="set champion">' + champion.name + '</span><br/>'
                 + '<span class="set title">' + settitle + '</span>'
