@@ -36,7 +36,7 @@ namespace ProBuilds.Pipeline
         private ConcurrentDictionary<long, byte> processingMatches = new ConcurrentDictionary<long, byte>();
 
         // <TEST> test to limit the number of downloads
-        private TestSynchronizer testSynchronizer = new TestSynchronizer();
+        private MatchDownloadLimiter testSynchronizer = new MatchDownloadLimiter();
         // </TEST>
 
         /// <summary>

@@ -42,9 +42,9 @@ namespace ProBuilds.Pipeline
         private RiotQuerySettings querySettings;
         private List<Queue> queryQueues;
 
-        private TestSynchronizer testSynchronizer;
+        private MatchDownloadLimiter testSynchronizer;
 
-        public PlayerMatchProducer(RiotApi riotApi, RiotQuerySettings querySettings, List<Queue> queryQueues, TestSynchronizer testSynchronizer)
+        public PlayerMatchProducer(RiotApi riotApi, RiotQuerySettings querySettings, List<Queue> queryQueues, MatchDownloadLimiter testSynchronizer)
         {
             api = riotApi;
             this.querySettings = querySettings;

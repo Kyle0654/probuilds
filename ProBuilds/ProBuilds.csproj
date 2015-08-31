@@ -73,7 +73,7 @@
     <Compile Include="SetBuilder\ItemSetWriter.cs" />
     <Compile Include="Match\ChampionState.cs" />
     <Compile Include="Match\TeamState.cs" />
-    <Compile Include="Pipeline\TestSynchronizer.cs" />
+    <Compile Include="Pipeline\MatchDownloadLimiter.cs" />
     <Compile Include="SetBuilder\SetBuilderSettings.cs" />
     <Compile Include="IO\MatchDirectory.cs" />
     <Compile Include="Pipeline\MatchPipeline.cs" />
