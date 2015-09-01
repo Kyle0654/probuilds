@@ -30,23 +30,28 @@
 }
 
 #banner {
-    width: 1200px;
+    max-width:1200px;
     margin: auto;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    align-content: stretch;
 }
 
 #banner > h1 {
-    float:left;
 }
 
 #banner > a {
-    float:right;
-    padding-top: 35px;
+
     color:blue;
+    flex-grow: 2;
+    text-align: end;
 }
 
 #sitetitle {
     cursor:pointer;
-    margin-right:20px;
 }
 
 #help {
