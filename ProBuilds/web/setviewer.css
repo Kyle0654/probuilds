@@ -63,8 +63,16 @@
     width: 95%;
 }
 
+#sets > a:hover {
+    background-color:rgb(224, 224, 224);
+}
+
 #sets > a.selected {
     background-color:rgb(204, 204, 204);
+}
+
+#sets > a.selected:hover {
+    background-color:rgb(183, 183, 183);
 }
 
 #sets > a > img {
@@ -75,14 +83,41 @@
 #sets > a > .set.title {
     font-size: 0.7em;
 }
-			
-#setviewer {
-	overflow-y: auto;
+
+#middlegroup {
+    overflow-y: auto;
 
 	margin: 0px 16px;
 				
 	flex: 1 0;
 }
+
+#setviewer,
+#helptext {
+    position: absolute;
+    overflow-y: auto;
+
+    background-color:white;
+    width: 33%;
+    height: 63.2%;
+}
+
+#setviewer:empty{
+    height:auto;
+}
+
+#setviewer {
+    z-index:5;
+}
+
+#helptext {
+    z-index: 3;
+}
+
+.filepath {
+    color:#FF9700;
+}
+
 
 /*-- Tab Stuff---*/
 article.tabs
