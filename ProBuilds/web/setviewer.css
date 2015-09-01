@@ -30,17 +30,17 @@ body
 #root {
 	display: flex;
 	flex-direction: row;
-	flex-wrap: nowrap;
+	flex-wrap: wrap;
 	justify-content: center;
 	align-items: stretch;
 				
-	height: 600px;
+	min-height: 600px;
 
     padding-top:1em;
 }
 			
 #footer, #root {
-	width: 1200px;
+	max-width: 1200px;
 				
 	margin: auto;
 }
@@ -48,6 +48,10 @@ body
 #footer {
 	padding: 26px 10px 26px 10px;
 	text-align: center;
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	flex-wrap: wrap;
 }
 
 #banner {
@@ -102,8 +106,13 @@ body
 .leftcol {
     overflow-y: auto;
 				
-	display: flex;
+	
+    display: flex;
 	flex-direction: column;
+    max-height: 600px;
+    flex-grow: 1;
+    min-width: 120px;
+    max-width: 225px;
 }
 			
 #sets {
@@ -150,7 +159,11 @@ body
 
 	margin: 0px 16px;
 				
-	flex: 1 0;
+	
+    flex: 1 0;
+    min-width: 261px;
+    display: flex;
+    flex-grow: 2;
 }
 
 .filepath {
@@ -276,16 +289,18 @@ article.tabs section h2
 }
 
 .rightcolumn {
-	width: 390px;
+	min-width: 50px;
 	overflow:none;
 				
 	flex: 0 0 main-size;
 				
 	display: flex;
 	flex-direction: column;
-	flex-wrap: nowrap;
+	flex-wrap: wrap;
 	justify-content: flex-start;
 	align-items: flex-start;
+	min-height: 100px;
+	flex-grow: 1;
 }
 			
 #settext > * {
