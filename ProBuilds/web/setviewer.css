@@ -53,14 +53,11 @@ body
     background:transparent;
 	padding: 26px 10px 26px 10px;
 	text-align: center;
-<<<<<<< HEAD
 	display: flex;
 	flex-direction: row;
 	justify-content: center;
 	flex-wrap: wrap;
-=======
     color:#888;
->>>>>>> origin/master
 }
 
 #banner {
@@ -210,6 +207,7 @@ a {
     min-width: 261px;
     display: flex;
     flex-grow: 2;
+    max-height: 600px;
 }
 
 .filepath {
