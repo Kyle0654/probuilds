@@ -6,6 +6,7 @@ var spells = undefined;
 
 var setsdiv = undefined;
 var setviewerdiv = undefined;
+var helptextdiv = undefined;
 var settextarea = undefined;
 var setfilename = undefined;
 var setdownload = undefined;
@@ -91,6 +92,10 @@ function handlehash() {
 
         //Clear selection
         $('a.set.link').removeClass('selected');
+
+        // Show help
+        helptextdiv.show();
+        setviewerdiv.hide();
     } else {
         var a = $('a.set.link').filter(function () { return $(this).attr('data-name') == currenthash; }).first();
         if (a != undefined) {
@@ -380,6 +385,10 @@ function loadset(sethash, href) {
             return;
         }
 
+        // hide help
+        helptextdiv.hide();
+        setviewerdiv.show();
+
         $('a.set.link').removeClass('selected');
 
         var setlink = $("a.set.link[href='" + loadinghref + "']");
@@ -536,6 +545,7 @@ $(function () {
     searchdiv = $('#search');
     setsdiv = $('#sets');
     setviewerdiv = $('#setviewer');
+    helptextdiv = $('#helptext');
     settextarea = $('#settextarea');
     setfilename = $('#setfilename');
     setdownload = $('#setdownload');

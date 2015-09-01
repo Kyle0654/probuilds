@@ -1,10 +1,11 @@
-﻿#banner, #root, #setviewer, #helptext, #footer {
-    background-color:whitesmoke;
-    padding: 0px 10px 0px 10px;
+﻿body
+{
+    background:#131313;
 }
 
-body {
-    background-color:black;
+#banner, #root, #setviewer, #helptext, #footer {
+    background-color:whitesmoke;
+    padding: 0px 10px 0px 10px;
 }
 
 #root {
@@ -111,28 +112,17 @@ body {
 	flex: 1 0;
 }
 
-#setviewer,
-#helptext {
-    position: absolute;
-    overflow-y: auto;
-    width: 33%;
-    height: 63.2%;
-}
-
-#setviewer:empty{
-    height:auto;
-}
-
-#setviewer {
-    z-index:5;
-}
-
-#helptext {
-    z-index: 3;
-}
-
 .filepath {
-    color:#FF9700;
+    text-wrap:none;
+    display:inline-block;
+    padding:0 0.2em;
+    color:#DC291E;
+    border:1px solid #ccc;
+    border-radius:3px;
+    background:#eee;
+    font-family:Courier New, Courier, monospace;
+    font-weight:bold;
+    font-size:0.8em;
 }
 
 
