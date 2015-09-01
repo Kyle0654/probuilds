@@ -40,6 +40,15 @@ body
     padding-top:1em;
     padding-bottom:1em;
 }
+
+#setviewer {
+    width:100%;
+}
+
+#root > div
+{
+    max-height: 600px;
+}
 			
 #footer, #root {
 	max-width: 1200px;
@@ -53,14 +62,12 @@ body
     background:transparent;
 	padding: 26px 10px 26px 10px;
 	text-align: center;
-<<<<<<< HEAD
+
 	display: flex;
 	flex-direction: row;
 	justify-content: center;
 	flex-wrap: wrap;
-=======
     color:#888;
->>>>>>> origin/master
 }
 
 #banner {
@@ -155,7 +162,6 @@ a {
 	
     display: flex;
 	flex-direction: column;
-    max-height: 600px;
     flex-grow: 1;
     min-width: 120px;
     max-width: 225px;
@@ -204,12 +210,11 @@ a {
     overflow-y: auto;
 
 	margin: 0px 16px;
-				
-	
+
     flex: 1 0;
     min-width: 261px;
     display: flex;
-    flex-grow: 2;
+    /*flex-grow: 2;*/
 }
 
 .filepath {
@@ -346,7 +351,7 @@ article.tabs section h2
 	justify-content: flex-start;
 	align-items: flex-start;
 	min-height: 100px;
-	flex-grow: 1;
+	/*flex-grow: 1;*/
 }
 			
 #settext > * {
