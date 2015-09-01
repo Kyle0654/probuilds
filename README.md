@@ -12,6 +12,8 @@ http://www.kyleschouviller.com/lolprobuilds/setviewer.html
 ```
 aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa 3000 180000
 ```
+5. Build the solution.
+6. Run the solution.
 
 Optionally, add -nodownload to the end to run from cached data (if you have run the app before).
 
