@@ -37,13 +37,10 @@ body
 				
 	min-height: 600px;
 
-    padding-top:1em;
-    padding-bottom:1em;
-}
-
-#root > div
-{
-    max-height: 600px;
+    
+	padding-top:1em;
+    
+	padding-bottom:1em;
 }
 			
 #footer, #root {
@@ -129,6 +126,10 @@ a {
     font-size:1.5em;
 }
 
+#setfilename {
+	word-break: break-all;
+}
+
 #banner > #controls {
     flex-grow: 2;
     text-align: end;
@@ -154,13 +155,44 @@ a {
 			
 .leftcol {
     overflow-y: auto;
-				
-	
     display: flex;
 	flex-direction: column;
     flex-grow: 1;
     min-width: 120px;
-    max-width: 225px;
+    max-height: 600px;
+    margin: 5px;
+    max-width: 200px;
+}
+
+.middlecolumn {
+    overflow-y: auto;
+	
+    /* margin: 0px 16px; */
+    flex: 1 0;
+    min-width: 261px;
+    max-height: 600px;
+    margin: 5px;
+    overflow-x: hidden;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.rightcolumn {
+	min-width: 200px;
+	/* overflow: auto; */
+				
+	flex: 1 0;
+				
+	display: flex;
+	flex-direction: column;
+	flex-wrap: wrap;
+	justify-content: flex-start;
+	align-items: flex-start;
+	min-height: 100px;
+    
+	max-height: 600px;
+	margin: 5px;
+	max-width: 390px;
 }
 			
 #sets {
@@ -201,18 +233,6 @@ a {
 #sets > a > .set.title {
     font-size: 0.7em;
 }
-
-#middlegroup {
-    overflow-y: auto;
-
-	margin: 0px 16px;
-
-    flex: 1 0;
-    min-width: 261px;
-    /*display: flex;*/
-    /*flex-grow: 2;*/
-}
-
 
 .filepath {
     text-wrap:none;
@@ -315,6 +335,21 @@ article.tabs section h2
 #search {
     padding-bottom: 5px;
     padding-top: 5px;
+    display:flex;
+    flex-direction:row;
+    flex-wrap:nowrap;
+    justify-content:flex-start;
+}
+
+#setsfilter {
+    display:flex;
+    flex-grow:1;
+    width: 100%;
+}
+
+#setsfilterlbl {
+    display:flex;
+    padding-right:5px;
 }
 
 #setstats {
@@ -335,21 +370,6 @@ article.tabs section h2
 	margin: 2px;
     padding: 5px;
 }
-
-.rightcolumn {
-	min-width: 390px;
-	overflow:none;
-				
-	flex: 0 0 main-size;
-				
-	display: flex;
-	flex-direction: column;
-	flex-wrap: wrap;
-	justify-content: flex-start;
-	align-items: flex-start;
-	min-height: 100px;
-	/*flex-grow: 1;*/
-}
 			
 #settext > * {
 	flex: 0 0;
@@ -360,6 +380,7 @@ article.tabs section h2
 	resize: none;
 				
 	flex: 1;
+	min-height: 200px;
 }
 
 /* Set Viewer */			
