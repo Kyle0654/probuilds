@@ -51,8 +51,9 @@ body
 }
 
 #banner {
-    width: 1200px;
+    max-width:1200px;
     margin: auto;
+
     background:#181818;
     color:rgb(153,153,153);
 
@@ -60,27 +61,33 @@ body
     text-transform: uppercase;
     letter-spacing: 1px;
 
-
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    align-content: stretch;
 }
 
 #banner > h1 {
-    float:left;
 }
 
-#banner > h1:hover, #banner > a:hover {
+#banner > h1:hover, #banner a:hover {
     color:#fff;
 }
 
-#banner > a {
-    float:right;
-/*    padding-top: 35px;*/
-    font-size:1.5em;
-    /*color:blue;*/
+#banner a {
+    color: rgb(153,153,153);
+    font-size: 1.5em;
+}
+
+#banner > #controls {
+    flex-grow: 2;
+    text-align: end;
 }
 
 #sitetitle {
     cursor:pointer;
-    margin-right:20px;
 }
 
 #help {
