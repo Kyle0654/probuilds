@@ -75,7 +75,7 @@ body
     align-content: stretch;
 }
 
-h1, h2, #allsetsdownload {
+h1, h2, #allsetsdownload, #setdownload {
     font-family:'LeagueGothic', Arial, sans-serif;
     text-transform: uppercase;
 }
@@ -97,18 +97,26 @@ a {
 #banner > h1 {
 }
 
-#banner > h1:hover, #banner a:hover {
-    color:#fff;
-}
-
 #banner a {
     color: rgb(153,153,153);
     font-size: 1.5em;
     padding-left:2em;
 }
 
-#banner a:active {
-    color:#DC291E;
+#banner > h1:hover, #banner a:hover {
+    color:#fff;
+}
+
+#banner a:active, #setdownload:hover, #helptext a:hover {
+    color:#DC291E; /* red */
+}
+
+#setdownload:active, #helptext a:active {
+    color:#000;
+}
+
+#setdownload {
+    font-size:1.5em;
 }
 
 #banner > #controls {
