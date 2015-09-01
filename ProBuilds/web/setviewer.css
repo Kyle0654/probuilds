@@ -41,10 +41,6 @@ body
     padding-bottom:1em;
 }
 
-#setviewer {
-    width:100%;
-}
-
 #root > div
 {
     max-height: 600px;
@@ -213,9 +209,10 @@ a {
 
     flex: 1 0;
     min-width: 261px;
-    display: flex;
+    /*display: flex;*/
     /*flex-grow: 2;*/
 }
+
 
 .filepath {
     text-wrap:none;
@@ -340,7 +337,7 @@ article.tabs section h2
 }
 
 .rightcolumn {
-	min-width: 50px;
+	min-width: 390px;
 	overflow:none;
 				
 	flex: 0 0 main-size;

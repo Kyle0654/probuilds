@@ -388,6 +388,7 @@ function loadset(sethash, href) {
         // hide help
         helptextdiv.hide();
         setviewerdiv.show();
+        setdownload.text('Download Set');
 
         $('a.set.link').removeClass('selected');
 
