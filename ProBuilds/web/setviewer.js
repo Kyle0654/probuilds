@@ -129,6 +129,9 @@ $(document).ready(function () {
         window.location.hash = '';
         handlehash();
     });
+    $('#sitetitle').click(function () {
+        window.location = window.location.href.split('#')[0];
+    });
 });
 
 //Calculate the amount of cold an array of items cost (doesn't factor in items that build into others)

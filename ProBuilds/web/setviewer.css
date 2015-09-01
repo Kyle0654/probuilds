@@ -1,4 +1,13 @@
-﻿#root {
+﻿#banner, #root, #setviewer, #helptext, #footer {
+    background-color:whitesmoke;
+    padding: 0px 10px 0px 10px;
+}
+
+body {
+    background-color:darkgray;
+}
+
+#root {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
@@ -15,7 +24,7 @@
 }
 			
 #footer {
-	margin-top: 16px;
+	padding: 26px 10px 26px 10px;
 	text-align: center;
 }
 
@@ -32,6 +41,16 @@
     float:right;
     padding-top: 35px;
     color:blue;
+}
+
+#sitetitle {
+    cursor:pointer;
+    margin-right:20px;
+}
+
+#help {
+    cursor:pointer;
+    margin-right:20px;
 }
 
 #allsetsdownload {
@@ -96,8 +115,6 @@
 #helptext {
     position: absolute;
     overflow-y: auto;
-
-    background-color:white;
     width: 33%;
     height: 63.2%;
 }
@@ -228,7 +245,7 @@ article.tabs section h2
 }
 
 .rightcolumn {
-	width: 400px;
+	width: 390px;
 	overflow:none;
 				
 	flex: 0 0 main-size;
