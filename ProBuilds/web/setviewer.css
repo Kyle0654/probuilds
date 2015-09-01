@@ -1,6 +1,25 @@
-﻿body
+﻿@font-face {
+    font-family: "LeagueGothic";
+    src: url('font/leaguegothic-regular-webfont.eot');
+    src: url('font/leaguegothic-regular-webfont.eot') format('eot'),
+         url('font/leaguegothic-regular-webfont.woff') format('woff'),    /* Modern Browsers */
+         url('font/leaguegothic-regular-webfont.ttf') format('truetype'), /* Safari, Android, iOS */
+         url('font/leaguegothic-regular-webfont.svg') format('svg');      /* Legacy iOS */
+}
+
+body
 {
     background:#131313;
+
+    background: rgb(74,74,74); /* Old browsers */
+    background: -moz-linear-gradient(top,  rgba(74,74,74,1) 0%, rgba(0,0,0,1) 100%); /* FF3.6+ */
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(74,74,74,1)), color-stop(100%,rgba(0,0,0,1))); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top,  rgba(74,74,74,1) 0%,rgba(0,0,0,1) 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  rgba(74,74,74,1) 0%,rgba(0,0,0,1) 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  rgba(74,74,74,1) 0%,rgba(0,0,0,1) 100%); /* IE10+ */
+    background: linear-gradient(to bottom,  rgba(74,74,74,1) 0%,rgba(0,0,0,1) 100%); /* W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#4a4a4a', endColorstr='#000000',GradientType=0 ); /* IE6-9 */
+
 }
 
 #banner, #root, #setviewer, #helptext, #footer {
@@ -16,6 +35,8 @@
 	align-items: stretch;
 				
 	height: 600px;
+
+    padding-top:1em;
 }
 			
 #footer, #root {
@@ -32,16 +53,29 @@
 #banner {
     width: 1200px;
     margin: auto;
+    background:#181818;
+    color:rgb(153,153,153);
+
+    font-family:'LeagueGothic', Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+
+
 }
 
 #banner > h1 {
     float:left;
 }
 
+#banner > h1:hover, #banner > a:hover {
+    color:#fff;
+}
+
 #banner > a {
     float:right;
-    padding-top: 35px;
-    color:blue;
+/*    padding-top: 35px;*/
+    font-size:1.5em;
+    /*color:blue;*/
 }
 
 #sitetitle {

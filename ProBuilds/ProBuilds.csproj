@@ -92,6 +92,15 @@
     <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>
+    <None Include="web\font\leaguegothic-regular-webfont.eot">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="web\font\leaguegothic-regular-webfont.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="web\font\leaguegothic-regular-webfont.woff">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RiotSharp-develop\RiotSharp\RiotSharp.csproj">
@@ -100,6 +109,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="web\font\leaguegothic-regular-webfont.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="web\setviewer.css">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
