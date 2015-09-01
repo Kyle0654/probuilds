@@ -153,7 +153,7 @@ namespace ProBuilds
                 var champion = StaticDataStore.Champions.GetChampionById(g.Key);
 
                 // Ensure the champion directory exists
-                string webpath = Path.Combine(itemSetRoot, champion.Key);
+                string webpath = Path.Combine(itemSetRoot, champion.Key, "Recommended");
                 string path = Path.Combine(webDataRoot, webpath);
                 if (!Directory.Exists(path))
                     Directory.CreateDirectory(path);

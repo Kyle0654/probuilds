@@ -105,8 +105,8 @@ namespace ProBuilds.SetBuilder
                     if (block.items[i].id == block.items[i + 1].id)
                     {
                         // Remove when adjacent, and keep the lower percentage
-                        ++block.items[i + 1].count;
-                        block.items.RemoveAt(i);
+                        block.items[i].count = block.items[i].count + 1;
+                        block.items.RemoveAt(i+1);
                         --i;
                     }
                 }

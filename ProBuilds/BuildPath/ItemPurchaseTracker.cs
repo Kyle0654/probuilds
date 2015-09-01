@@ -60,6 +60,11 @@ namespace ProBuilds.BuildPath
             {
                 return !a.Equals(b);
             }
+
+            public override string ToString()
+            {
+                return string.Format("({0},{1})", ItemId, Number);
+            }
         }
 
         public int ItemId;

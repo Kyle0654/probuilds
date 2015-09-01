@@ -67,7 +67,7 @@ namespace ProBuilds.Pipeline
         public void Begin()
         {
             // Get players
-            var playersAllChallenger = StaticDataStore.Realms.Keys.AsParallel().WithDegreeOfParallelism(4).SelectMany(region =>
+            var playersAllChallenger = StaticDataStore.Realms.Keys.SelectMany(region =>
             {
                 int retries = 3;
                 while (retries > 0)
@@ -89,7 +89,7 @@ namespace ProBuilds.Pipeline
                 throw new RiotSharpException(string.Format("Error downloading matches for region {0}", region.ToString()));
             });
 
-            var playersAllMaster = StaticDataStore.Realms.Keys.AsParallel().WithDegreeOfParallelism(4).SelectMany(region =>
+            var playersAllMaster = StaticDataStore.Realms.Keys.SelectMany(region =>
             {
                 int retries = 3;
                 while (retries > 0)
@@ -114,7 +114,7 @@ namespace ProBuilds.Pipeline
             var playersAllPro = playersAllChallenger.Concat(playersAllMaster);
 
             // Post players
-            playersAllPro.ForAll(player =>
+            playersAllPro.AsParallel().WithDegreeOfParallelism(4).ForAll(player =>
             {
                 PlayerBufferBlock.Post(player);
             });
