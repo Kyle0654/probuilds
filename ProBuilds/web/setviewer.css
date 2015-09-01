@@ -194,6 +194,10 @@ a {
 	margin: 5px;
 	max-width: 390px;
 }
+
+#helptext {
+    max-height:999999px; /*hack to fix text rendering on android (being really big)*/
+}
 			
 #sets {
 	overflow-y: auto;
@@ -381,6 +385,7 @@ article.tabs section h2
 				
 	flex: 1;
 	min-height: 200px;
+    max-height:999999px; /*hack to fix text rendering on android (being really big)*/
 }
 
 /* Set Viewer */			
@@ -404,6 +409,7 @@ article.tabs section h2
 				
 	margin: 1px;
 	padding: 1px;
+    max-height:999999px; /*hack to fix text rendering on android (being really big)*/
 }
 			
 .block.itemcontainer {
