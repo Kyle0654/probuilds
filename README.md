@@ -8,14 +8,11 @@ http://www.kyleschouviller.com/lolprobuilds/setviewer.html
 1. Open the solution in Visual Studio.
 2. Right-click on the ProBuilds project and select Properties.
 3. Select the Debug tab on the left of the properties page.
-4. In command line argument, enter your api key, followed by your per 10 seconds limit, then your per 10 minutes limit. e.g.
-```
-aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa 3000 180000
-```
+4. In command line argument, enter your api key, followed by your per 10 seconds limit, then your per 10 minutes limit. e.g. `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa 3000 180000`
 5. Build the solution.
 6. Run the solution.
 
-Optionally, add -nodownload to the end to run from cached data (if you have run the app before).
+Optionally, add `-nodownload` to the end to run from cached data (if you have run the app before).
 
 ---
 
