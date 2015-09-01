@@ -20,6 +20,7 @@ body
     background: linear-gradient(to bottom,  rgba(74,74,74,1) 0%,rgba(0,0,0,1) 100%); /* W3C */
     filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#4a4a4a', endColorstr='#000000',GradientType=0 ); /* IE6-9 */
 
+    margin:0;
 }
 
 #banner, #root, #setviewer, #helptext, #footer {
@@ -37,17 +38,22 @@ body
 	height: 600px;
 
     padding-top:1em;
+    padding-bottom:1em;
 }
 			
 #footer, #root {
 	width: 1200px;
 				
 	margin: auto;
+    border-bottom-left-radius:10px;
+    border-bottom-right-radius:10px;
 }
-			
+
 #footer {
+    background:transparent;
 	padding: 26px 10px 26px 10px;
 	text-align: center;
+    color:#888;
 }
 
 #banner {
@@ -69,6 +75,25 @@ body
     align-content: stretch;
 }
 
+h1, h2, #allsetsdownload {
+    font-family:'LeagueGothic', Arial, sans-serif;
+    text-transform: uppercase;
+}
+
+h2 {
+    font-size:1.8em;
+}
+
+a {
+    color: rgb(30,30,30);
+    text-decoration:none;
+    font-weight:bold;
+}
+
+#allsetsdownload {
+    font-size:1.3em;
+}
+
 #banner > h1 {
 }
 
@@ -79,6 +104,11 @@ body
 #banner a {
     color: rgb(153,153,153);
     font-size: 1.5em;
+    padding-left:2em;
+}
+
+#banner a:active {
+    color:#DC291E;
 }
 
 #banner > #controls {
@@ -95,8 +125,13 @@ body
     margin-right:20px;
 }
 
-#allsetsdownload {
-    padding-bottom: 5px;
+#banner, #sets {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 			
 .leftcol {
@@ -301,8 +336,8 @@ article.tabs section h2
 
 /* Set Viewer */			
 #setviewer .set.title {
-	font-weight: bold;
-	font-size:1.2em;
+    font-family:'LeagueGothic', Arial, sans-serif;
+	font-size:2em;
 
     float:left;
 }
