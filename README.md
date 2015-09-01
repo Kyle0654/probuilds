@@ -1,10 +1,10 @@
 # Pro Item Sets
 A League of Legends item set generator that generates item sets from pro player purchase data.
 
-View the current item sets at
+View the currently generated item sets at
 http://www.kyleschouviller.com/lolprobuilds/setviewer.html
 
-# Instructions for Running
+# Instructions for Generating Item Sets
 
 1. Open the solution in Visual Studio.
 2. Right-click on the ProBuilds project and select Properties.
