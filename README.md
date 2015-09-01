@@ -82,7 +82,7 @@ These are all also tunable in `SetBuilderSettings`.
 
 ### Clean Up
 
-We finally perform some post-processing, where we shuffle consumables to the end of blocks, combine adjacent items with the same id (because they are keyed by id and number bought), and try to ensure the starting block has enough items to purchase given starting gold.
+We finally perform some post-processing, where we shuffle consumables to the end of blocks, combine adjacent items with the same id (because they are keyed by id and number bought), and try to ensure the starting block has enough items to purchase given starting gold. We also eliminate base items from mid and late game, as players are expected to choose among different items at that stage of the game, and showing only final items reduces clutter.
 
 After the sets have been generated, we name them based on champion, lane, and whether or not Smite was taken. We then look for any champion sets that have only two lane-Smite combinations, where one set is "Jungle with Smite" and the other is any non-jungle lane without Smite, and we combine the sets, switching blocks on or off based on whether or not the Smite summoner spell was taken.
 
