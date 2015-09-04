@@ -42,6 +42,14 @@ body
     
 	padding-bottom:1em;
 }
+
+/* This is probably a better way to do it (css vs my javascript method)
+@media all and (max-width: 640px) {
+    #root {
+        flex-direction: column;
+    }
+}
+*/
 			
 #footer, #root {
 	max-width: 1200px;
@@ -413,7 +421,6 @@ article.tabs section h2
 }
 			
 .block.itemcontainer {
-	display: block;
 	display: flex;
 				
 	flex-direction: row;
