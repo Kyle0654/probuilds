@@ -106,42 +106,6 @@ function handlehash() {
 
 $(window).on('hashchange', handlehash);
 
-//As the window resizes change some styles so that it looks good
-//basically adjust some styles to work with mobile better.
-$(window).on('resize', function () {
-    var width = $(this).width();
-
-    if (width <= 900) {
-        $('.rightcolumn').css('max-width', '900px');
-    } else {
-        $('.rightcolumn').css('max-width', '');
-    }
-
-    if (width <= 535) {
-        $('#setviewer').css('padding', '0px 0px 0px 0px');
-        $('#helptext').css('padding', '0px 0px 0px 0px');
-    } else {
-        $('#setviewer').css('padding', '');
-        $('#helptext').css('padding', '');
-    }
-
-    if (width <= 520) {
-        $('.leftcol').css('max-height', '140px');
-        $('.leftcol').css('max-width', '600px');
-    } else {
-        $('.leftcol').css('max-height', '');
-        $('.leftcol').css('max-width', '');
-    }
-
-    //No download stuff so probably showing help
-    if (width < 1200 && $('#settextarea').val() == '') {
-        $('.rightcolumn').css('flex-basis', '100%');
-        $('.rightcolumn').css('max-width', '1200px');
-    } else {
-        $('.rightcolumn').css('flex-basis', '');
-    }
-});
-
 $(document).ready(function () {
     //Add champion search functionality
     $("#setsfilter").keyup(function () {
@@ -173,6 +137,42 @@ $(document).ready(function () {
     $('#sitetitle').click(function () {
         window.location = window.location.href.split('#')[0];
     });
+
+    //As the window resizes change some styles so that it looks good
+    //basically adjust some styles to work with mobile better.
+    $(window).on('resize', function () {
+        var width = $(this).width();
+
+        if (width <= 900) {
+            $('.rightcolumn').css('max-width', '900px');
+        } else {
+            $('.rightcolumn').css('max-width', '');
+        }
+
+        if (width <= 535) {
+            $('#setviewer').css('padding', '0px 0px 0px 0px');
+            $('#helptext').css('padding', '0px 0px 0px 0px');
+        } else {
+            $('#setviewer').css('padding', '');
+            $('#helptext').css('padding', '');
+        }
+
+        if (width <= 520) {
+            $('.leftcol').css('max-height', '140px');
+            $('.leftcol').css('max-width', '600px');
+        } else {
+            $('.leftcol').css('max-height', '');
+            $('.leftcol').css('max-width', '');
+        }
+
+        //No download stuff so probably showing help
+        if (width < 1200 && $('#settextarea').val() == '') {
+            $('.rightcolumn').css('flex-basis', '100%');
+            $('.rightcolumn').css('max-width', '1200px');
+        } else {
+            $('.rightcolumn').css('flex-basis', '');
+        }
+    }).resize();
 });
 
 //Calculate the amount of cold an array of items cost (doesn't factor in items that build into others)
