@@ -20,6 +20,7 @@ namespace ProBuilds.Pipeline
         public ConcurrentDictionary<int, ChampionPurchaseTracker> ChampionPurchaseTrackers = new ConcurrentDictionary<int, ChampionPurchaseTracker>();
 
         private static EventType[] ItemEventTypes = new EventType[] { EventType.ItemPurchased, EventType.ItemDestroyed, EventType.ItemSold, EventType.ItemUndo };
+        private static EventType[] SkillEventTypes = new EventType[] { EventType.SkillLevelUp };
 
         public async Task ConsumeMatchDetail(MatchDetail match)
         {
@@ -71,16 +72,22 @@ namespace ProBuilds.Pipeline
                     // Update any game state that can be gathered from all events
                     gameState.Update(frame, e);
 
+                    // Handle a weird error with ItemId 1501, ItemDestroyed, ParticipantId 0
+                    if (!championPurchases.ContainsKey(e.ParticipantId))
+                        return;
+
                     // Process item events
                     if (ItemEventTypes.Contains(e.EventType.Value))
                     {
                         ItemPurchaseInformation itemPurchase = new ItemPurchaseInformation(e, gameState);
 
-                        // Handle a weird error with ItemId 1501, ItemDestroyed, ParticipantId 0
-                        if (!championPurchases.ContainsKey(e.ParticipantId))
-                            return;
-
                         championPurchases[e.ParticipantId].ItemPurchases.Add(itemPurchase);
+                    }
+
+                    // Process skill events
+                    if (SkillEventTypes.Contains(e.EventType.Value))
+                    {
+                        championPurchases[e.ParticipantId].SkillEvents.Add(e);
                     }
                 });
             });

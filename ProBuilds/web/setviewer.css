@@ -411,7 +411,7 @@ img.item { width:32px; height:32px; }
 img.champion { width:32px; height:32px; }
 
 /* Spells */
-#setviewer img.spell
+#setviewer img.summonerspell
 {
     width:32px;
     height:32px;
@@ -423,8 +423,41 @@ img.champion { width:32px; height:32px; }
     clear:none;
 }
 
-#setviewer img.spell.active
+#setviewer img.summonerspell.active
 {
     -webkit-filter: grayscale(0);
     filter: grayscale(0);
+}
+
+/* Skills */
+table.skills
+{
+    border-collapse: collapse;
+    font-size: 12px;
+    display:block;
+    clear:both;
+    margin:1em 0;
+}
+
+table.skills td, table.skills tr
+{
+    height:16px;
+    border:1px solid #ddd;
+}
+
+table.skills td
+{
+    width:16px;
+    text-align:center;
+}
+
+table.skills td.level
+{
+    background-color:#DC291E;
+}
+
+table.skills img.spell
+{
+    width:16px;
+    height:16px;
 }

@@ -43,11 +43,19 @@ namespace ProBuilds.BuildPath
         /// </summary>
         public Dictionary<GameStage, List<ItemPurchaseStats>> Purchases;
 
+        /// <summary>
+        /// The order skills should be leveled in.
+        /// </summary>
+        public int[] SkillOrder;
+
         public ChampionPurchaseCalculator(PurchaseSet set)
         {
             Key = set.Key;
 
             MatchCount = set.MatchCount;
+
+            // Get build order
+            SkillOrder = SkillOrderCalculator.CalculateSkillOrder(set.SkillOrderCounts.ToDictionary(kvp => kvp.Key, kvp => kvp.Value));
 
             // Create stats
             var stats = PurchaseStats.Create(set.AllItemPurchases, set.MatchCount);

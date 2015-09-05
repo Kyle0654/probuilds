@@ -46,9 +46,13 @@ function getitemimg(id) {
     return '<img class="item" alt="' + item.name + '" title="' + item.name + '" src="' + getimg(items.version, item.image.group, item.image.full) + '" />';
 }
 
-function getspellimg(name) {
+function getsummonerspellimg(name) {
     var spell = getspell(name);
-    return '<img class="spell" data-spell="' + spell.key + '" alt="' + spell.name + '" title="' + spell.name + '" src="' + getimg(spells.version, spell.image.group, spell.image.full) + '" />';
+    return '<img class="summonerspell" data-summoner-spell="' + spell.key + '" alt="' + spell.name + '" title="' + spell.name + '" src="' + getimg(spells.version, spell.image.group, spell.image.full) + '" />';
+}
+
+function getspellimg(spell) {
+    return '<img class="spell" data-spell="' + spell.key + '" alt="' + spell.name + '" title= "' + spell.name + '" src="' + getimg(champions.version, spell.image.group, spell.image.full) + '" />';
 }
 
 function getchampionimg(key) {
@@ -156,7 +160,7 @@ function getblockhtml(block) {
     //Get the cost of the items in this block
     var cost = calculateGold(block.items);
 
-    var blocktitle = block.type + ' (' + cost + ' Gold)';
+    var blocktitle = block.type;// + ' (' + cost + ' Gold)';
 
     var data = '';
     if (block.showIfSummonerSpell) {
@@ -353,7 +357,7 @@ function spellClick() {
 }
 
 function updateSpellBlockVisibility() {
-    var key = $(this).attr('data-spell');
+    var key = $(this).attr('data-summoner-spell');
     var active = $(this).hasClass('active');
 
     setviewerdiv.find(".block.container[data-show-spells='" + key + "']").toggle(active);
@@ -370,12 +374,43 @@ function getspellshtml(showspells) {
 
     $.each(showspells, function (name, active) {
         if (active) {
-            var spellimg = getspellimg(name);
+            var spellimg = getsummonerspellimg(name);
             spellshtml += spellimg;
         }
     });
 
     return spellshtml;
+}
+
+function getskillshtml(champion, skills) {
+    var table = '<table class="skills">';
+
+    var max = -1;
+    table += '<tr>';
+    for (var i = 0; i < skills.length; ++i) {
+        table += '<td>' + (i == 0 ? '&nbsp;' : i) + '</td>';
+        max = skills[i] > max ? skills[i] : max;
+    }
+    table += '<td>' + skills.length + '</td>';
+    table += '</tr>';
+
+    for (var s = 0; s < max; ++s) {
+        table += '<tr>';
+        
+        var spellimg = (champion.spells.length > s) ? getspellimg(champion.spells[s]) : '';
+
+        table += '<td>' + spellimg + '</td>';
+
+        for (var i = 0; i < skills.length; ++i) {
+            var isSkillLevel = skills[i] - 1 == s;
+            table += '<td' + (isSkillLevel ? ' class="level"' : '') + '>' + '' + '</td>';
+        }
+        table += '</tr>';
+    }
+
+    table += '</table>'
+
+    return table;
 }
 
 function loadset(sethash, href) {
@@ -409,6 +444,10 @@ function loadset(sethash, href) {
         // Create set display
         var title = '<span class="set title">' + champimg + ' ' + champion.name + ' ' + set.title + '</span>';
         setviewerdiv.append(title);
+
+        // Create skill order
+        var skillorder = getskillshtml(champion, set.skillorder);
+        setviewerdiv.append(skillorder);
 
         //Add the spells buttons
         var showspells = {};

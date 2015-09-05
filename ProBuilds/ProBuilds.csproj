@@ -58,6 +58,7 @@
     <Compile Include="BuildPath\PurchaseSet.cs" />
     <Compile Include="BuildPath\PurchaseSetKey.cs" />
     <Compile Include="BuildPath\PurchaseStats.cs" />
+    <Compile Include="BuildPath\SkillOrderCalculator.cs" />
     <Compile Include="Extensions\EnumExtensions.cs" />
     <Compile Include="Pipeline\ChampionWinCounter.cs" />
     <Compile Include="IO\CompressedJson.cs" />

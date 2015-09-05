@@ -1,6 +1,7 @@
 using ProBuilds.Match;
 using RiotSharp.MatchEndpoint;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ProBuilds.BuildPath
 {
@@ -14,6 +15,9 @@ namespace ProBuilds.BuildPath
         public bool HasSmite { get; private set; }
 
         public List<ItemPurchaseInformation> ItemPurchases { get; private set; }
+        public List<Event> SkillEvents { get; private set; }
+
+        public IEnumerable<int> SkillOrder { get { return SkillEvents.Select(e => e.SkillSlot); } }
 
         public ChampionMatchItemPurchases(int championId, long matchId, Lane lane, bool isWinner, bool hasSmite)
         {
@@ -25,6 +29,7 @@ namespace ProBuilds.BuildPath
             HasSmite = hasSmite;
 
             ItemPurchases = new List<ItemPurchaseInformation>();
+            SkillEvents = new List<Event>();
         }
     }
 }

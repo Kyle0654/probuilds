@@ -121,6 +121,10 @@ namespace ProBuilds.SetBuilder
         [JsonProperty("matchcount")]
         public long MatchCount;
 
+        [MetadataField]
+        [JsonProperty("skillorder")]
+        public int[] SkillOrder;
+
         [JsonProperty("title")]
         public string title;
 

@@ -13,11 +13,18 @@ namespace ProBuilds.BuildPath
     /// </summary>
     public class PurchaseSet
     {
+        public const char SkillSeparator = ':';
+
         public PurchaseSetKey Key { get; private set; }
 
         public long MatchCount = 0;
 
         public ConcurrentDictionary<int, ItemPurchaseTracker> ItemPurchases = new ConcurrentDictionary<int, ItemPurchaseTracker>();
+
+        /// <summary>
+        /// Order in which skills were leveled.
+        /// </summary>
+        public ConcurrentDictionary<string, int> SkillOrderCounts = new ConcurrentDictionary<string, int>();
 
         /// <summary>
         /// All purchases, including how many of that item were purchased.
@@ -41,6 +48,10 @@ namespace ProBuilds.BuildPath
             var purchases = EliminateUndos(matchPurchases.ItemPurchases);
             if (purchases == null)
                 return;
+
+            // Track skill order
+            string purchaseOrderString = string.Join(PurchaseSet.SkillSeparator.ToString(), matchPurchases.SkillOrder.Select(v => v.ToString()));
+            SkillOrderCounts.AddOrUpdate(purchaseOrderString, 1, (val, ct) => ct + 1);
 
             // Process purchases to determine "builds into" information for each purchase
             AddBuildsIntoInformation(purchases);

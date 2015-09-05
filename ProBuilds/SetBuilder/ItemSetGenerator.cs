@@ -74,6 +74,9 @@ namespace ProBuilds.SetBuilder
             itemSet.priority = priority;
             itemSet.sortrank = sortRank < 0 ? 0 : sortRank;
 
+            // Get skill order
+            itemSet.SkillOrder = stats.SkillOrder;
+
             // Block info
             var blockData = new[]
             {
