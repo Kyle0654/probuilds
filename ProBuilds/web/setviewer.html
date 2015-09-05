@@ -1,8 +1,14 @@
 <html>
 	<head>
 		<title>Pro Item Sets</title>
-		<link rel="stylesheet" type="text/css" href="setviewer.css" />
-		<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+		
+        <link rel="stylesheet" type="text/css" href="setviewer.css" />
+		
+        <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+        
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.7/styles/default.min.css">
+        <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.7/highlight.min.js"></script>
+
 		<script type="text/javascript" src="setviewer.js"></script>
 	</head>
 	<body>
@@ -41,7 +47,9 @@
             <div class="rightcolumn" id="settext">
                 <a id="setdownload"></a>
                 <span id="setfilename"></span>
-                <textarea id="settextarea" readonly></textarea>
+                
+                <!--<textarea id="settextarea" readonly></textarea>-->
+                <code id="settextarea" class="json"></code>
             </div>
 		</div>
 		<div id="footer">Pro Item Sets isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends © Riot Games, Inc.</div>

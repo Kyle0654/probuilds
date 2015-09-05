@@ -486,7 +486,12 @@ function loadset(sethash, href) {
 
         // Set text area display
         var jsonstr = JSON.stringify(set, null, 2);
-        settextarea.val(jsonstr);
+        //settextarea.val(jsonstr);
+        settextarea.text(jsonstr);
+        
+        settextarea.each(function (i, block) {
+            hljs.highlightBlock(block);
+        });
 
         // Set filename
         setfilename.text(href.substring(setmanifest.root.length));
