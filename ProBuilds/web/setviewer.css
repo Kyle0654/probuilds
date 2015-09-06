@@ -443,7 +443,9 @@ img.champion { width:32px; height:32px; }
 /* Skills */
 table.skills
 {
+    table-layout: fixed;
     border-collapse: collapse;
+
     font-size: 12px;
     display:block;
     clear:both;
@@ -459,7 +461,7 @@ table.skills td, table.skills tr
 
 table.skills td
 {
-    width:16px;
+    min-width:16px;
     text-align:center;
 }
 
