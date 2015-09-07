@@ -42,20 +42,63 @@ function getchampionbyid(id) {
 
 function createtooltips() {
     $(document).tooltip({
-        items: 'img.item[data-itemid]',
+        items: 'img.item[data-itemid], img.spell[data-championid][data-spellid]',
         track: true,
         position: { my: 'left+15 top', at: 'right bottom', collision: 'fit' },
         content: function () {
-            var itemid = $(this).attr('data-itemid');
-            var item = getitem(itemid);
+            var elem = $(this);
+            if (elem.is('img.item[data-itemid]')) {
+                var itemid = elem.attr('data-itemid');
+                var item = getitem(itemid);
+                var tooltiphtml =
+                    '<div class="tooltip item">'
+                        + '<div class="item title">'
+                            + '<img class="item" src="' + getimg(items.version, item.image.group, item.image.full) + '" />'
+                            + '<span class="item name">' + item.name + '</span><br/>'
+                            + '<span class="item gold">' + item.gold.total + '</span><br/>'
+                        + '</div>'
+                        + '<span class="item description">' + item.description + '</span>'
+                    + '</div>';
+                return tooltiphtml;
+            } else if (elem.is('img.spell[data-championid][data-spellid]'))
+            {
+                var championid = elem.attr('data-championid');
+                var champion = getchampion(championid);
+                var spellid = elem.attr('data-spellid');
+                var spell = champion.spells[spellid];
+
+                var tooltiphtml =
+                    '<div class="tooltip spell">'
+                        + '<div class="spell title">'
+                            + '<img class="spell" src="' + getimg(champions.version, spell.image.group, spell.image.full) + '" />'
+                            + '<span class="spell name">' + spell.name + '</span><br/>'
+                        + '</div>'
+                        + '<span class="spell description">' + spell.sanitizedDescription + '</span>'
+                    + '</div>';
+                return tooltiphtml;
+            }
+        }
+    })
+}
+
+function createspelltooltips() {
+    $(document).tooltip({
+        items: 'img.spell[data-championid][data-spellid]',
+        track: true,
+        position: { my: 'left+15 top', at: 'right bottom', collision: 'fit' },
+        content: function () {
+            var championid = $(this).attr('data-championid');
+            var champion = getchampion(championid);
+            var spellid = $(this).attr('data-spellid');
+            var spell = champion.spells[spellid];
+
             var tooltiphtml =
-                '<div class="tooltip item">'
-                    + '<div class="item title">'
-                        + '<img class="item" src="' + getimg(items.version, item.image.group, item.image.full) + '" />'
-                        + '<span class="item name">' + item.name + '</span><br/>'
-                        + '<span class="item gold">' + item.gold.total + '</span><br/>'
+                '<div class="tooltip spell">'
+                    + '<div class="spell title">'
+                        + '<img class="spell" src="' + getimg(champions.version, spell.image.group, spell.image.full) + '" />'
+                        + '<span class="spell name">' + spell.name + '</span><br/>'
                     + '</div>'
-                    + '<span class="item description">' + item.description + '</span>'
+                    + '<span class="spell description">' + spell.sanitizedDescription + '</span>'
                 + '</div>';
             return tooltiphtml;
         }
@@ -73,8 +116,9 @@ function getsummonerspellimg(name) {
     return '<img class="summonerspell" data-summoner-spell="' + spell.key + '" alt="' + spell.name + '" title="' + spell.name + '" src="' + getimg(spells.version, spell.image.group, spell.image.full) + '" />';
 }
 
-function getspellimg(spell) {
-    return '<img class="spell" data-spell="' + spell.key + '" alt="' + spell.name + '" title= "' + spell.name + '" src="' + getimg(champions.version, spell.image.group, spell.image.full) + '" />';
+function getspellimg(champion, spellid) {
+    var spell = champion.spells[spellid];
+    return '<img class="spell" data-spell="' + spell.key + '" data-championid="' + champion.key + '" data-spellid="' + spellid + '" alt="' + spell.name + '" title= "' + spell.name + '" src="' + getimg(champions.version, spell.image.group, spell.image.full) + '" />';
 }
 
 function getchampionimg(key) {
@@ -419,7 +463,7 @@ function getskillshtml(champion, skills) {
     for (var s = 0; s < max; ++s) {
         table += '<tr>';
         
-        var spellimg = (champion.spells.length > s) ? getspellimg(champion.spells[s]) : '';
+        var spellimg = (champion.spells.length > s) ? getspellimg(champion, s) : '';
 
         table += '<td>' + spellimg + '</td>';
 

@@ -488,7 +488,8 @@ table.skills img.spell
 
 /* 45x45 */
 
-div.tooltip.item {
+div.tooltip.item,
+div.tooltip.spell {
     background:rgba(0,0,0,0.85);
     color:#7DE6C0;
 
@@ -499,19 +500,31 @@ div.tooltip.item {
     line-height:18px;
 }
 
-div.tooltip.item .item.title {
+div.tooltip.spell {
+    color:#8C8DCE;
+}
+
+div.tooltip.item img,
+div.tooltip.spell img {
+    float:left;
+    padding-right:7px;
+    width:32px;
+    height:32px;
+}
+
+div.tooltip.item .item.title,
+div.tooltip.spell .spell.title {
     display:block;
     margin-bottom:7px;
     min-height:32px;
 }
 
-div.tooltip.item img {
-    float:left;
-    padding-right:7px;
-}
-
 div.tooltip span.item.name {
     color:#C7B880;
+}
+
+div.tooltip span.spell.name {
+    color:#FFFFFF;
 }
 
 div.tooltip span.gold {
