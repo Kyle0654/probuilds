@@ -475,3 +475,78 @@ table.skills img.spell
     width:16px;
     height:16px;
 }
+
+.ui-tooltip, .ui-tooltip-content {
+    margin:0;
+    padding:0;
+    background:transparent;
+    border:0;
+    font-size:1em;
+    font-weight:normal;
+    border-radius:0;
+}
+
+/* 45x45 */
+
+div.tooltip.item {
+    background:rgba(0,0,0,0.85);
+    color:#7DE6C0;
+
+    border:2px solid 60593c;
+    padding:7px;
+
+    font-size:12px;
+    line-height:18px;
+}
+
+div.tooltip.item .item.title {
+    display:block;
+    margin-bottom:7px;
+    min-height:32px;
+}
+
+div.tooltip.item img {
+    float:left;
+    padding-right:7px;
+}
+
+div.tooltip span.item.name {
+    color:#C7B880;
+}
+
+div.tooltip span.gold {
+    color:#C7B880;
+    background-image:url('http://ddragon.leagueoflegends.com/cdn/5.2.1/img/ui/gold.png');
+    background-position:left top;
+    background-repeat:no-repeat;
+    padding-left:24px;
+}
+
+div.tooltip .item.description {
+    clear:both;
+}
+
+div.tooltip .item.description stats {
+    color:#92f392;
+}
+
+div.tooltip .item.description unique,
+div.tooltip .item.description active,
+div.tooltip .item.description passive {
+    color:#B8A019;
+}
+
+div.tooltip .item.description consumable {
+    color:#E67C12;
+}
+
+div.tooltip .item.description groupLimit {
+    color:#7DCF7E;
+}
+
+/*<div class="tooltip item">'
+                    + '<img class="item" src="' + getimg(items.version, item.image.group, item.image.full) + '" />'
+                    + '<span class="item name">' + item.name + '</span><br/>'
+                    + '<span class="item gold">' + item.gold.total + '</span><br/>'
+                    + '<span class="item description">' + item.description + '</span>'
+                + '</div>';*/

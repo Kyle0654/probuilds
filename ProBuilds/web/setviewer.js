@@ -40,10 +40,32 @@ function getchampionbyid(id) {
     return getchampion(key);
 }
 
+function createtooltips() {
+    $(document).tooltip({
+        items: 'img.item[data-itemid]',
+        track: true,
+        position: { my: 'left+15 top', at: 'right bottom', collision: 'fit' },
+        content: function () {
+            var itemid = $(this).attr('data-itemid');
+            var item = getitem(itemid);
+            var tooltiphtml =
+                '<div class="tooltip item">'
+                    + '<div class="item title">'
+                        + '<img class="item" src="' + getimg(items.version, item.image.group, item.image.full) + '" />'
+                        + '<span class="item name">' + item.name + '</span><br/>'
+                        + '<span class="item gold">' + item.gold.total + '</span><br/>'
+                    + '</div>'
+                    + '<span class="item description">' + item.description + '</span>'
+                + '</div>';
+            return tooltiphtml;
+        }
+    })
+}
+
 // TODO: use sprites
 function getitemimg(id) {
     var item = getitem(id);
-    return '<img class="item" alt="' + item.name + '" title="' + item.name + '" src="' + getimg(items.version, item.image.group, item.image.full) + '" />';
+    return '<img class="item" data-itemid="' + id + '" alt="' + item.name + '" title="' + item.name + '" src="' + getimg(items.version, item.image.group, item.image.full) + '" />';
 }
 
 function getsummonerspellimg(name) {
@@ -460,7 +482,7 @@ function loadset(sethash, href) {
         });
         var spellshtml = getspellshtml(showspells);
         setviewerdiv.append(spellshtml);
-        setviewerdiv.find('img.spell').click(spellClick);
+        setviewerdiv.find('img.summonerspell').click(spellClick);
 
         //Add all the blocks
         $.each(data.blocks, function (i, block) {
@@ -480,9 +502,12 @@ function loadset(sethash, href) {
         }
 
         //Update the block visibility based on spells
-        setviewerdiv.find('img.spell').each(function () {
+        setviewerdiv.find('img.summonerspell').each(function () {
             updateSpellBlockVisibility.call($(this));
         });
+
+        // create tooltips
+        createtooltips();
 
         // Set text area display
         var jsonstr = JSON.stringify(set, null, 2);
