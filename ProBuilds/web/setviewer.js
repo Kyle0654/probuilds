@@ -219,6 +219,12 @@ $(document).ready(function () {
             $('.rightcolumn').css('max-width', '');
         }
 
+        if (width <= 650) {
+            $('.middlecolumn').css('max-height', 'none');
+        } else {
+            $('.middlecolumn').css('max-height', '');
+        }
+
         if (width <= 535) {
             $('#setviewer').css('padding', '0px 0px 0px 0px');
             $('#helptext').css('padding', '0px 0px 0px 0px');
@@ -230,9 +236,11 @@ $(document).ready(function () {
         if (width <= 520) {
             $('.leftcol').css('max-height', '140px');
             $('.leftcol').css('max-width', '600px');
+            $('.rightcolumn').css('max-height', '400px');
         } else {
             $('.leftcol').css('max-height', '');
             $('.leftcol').css('max-width', '');
+            $('.rightcolumn').css('max-height', '');
         }
 
         //No download stuff so probably showing help
@@ -242,6 +250,10 @@ $(document).ready(function () {
         } else {
             $('.rightcolumn').css('flex-basis', '');
         }
+
+        //Resize the skills table with the parent
+        updateSkillsTable();
+        
     }).resize();
 });
 
@@ -484,6 +496,21 @@ function getspellshtml(showspells) {
     return spellshtml;
 }
 
+//Update the size of the table based on it's parent
+function updateSkillsTable() {
+    if (setviewerdiv != undefined) {
+        var skillsTable = setviewerdiv.find("table.skills")[0];
+        if (skillsTable != undefined) {
+            var rCount = skillsTable.rows.length;
+            var cCount = skillsTable.rows[0].cells.length;
+            var ratio = cCount / rCount;
+            var setViewerW = setviewerdiv.width() - parseInt(setviewerdiv.css('padding-left'), 10);
+            skillsTable.style.width = setViewerW;
+            skillsTable.style.height = (setViewerW / ratio);
+        }
+    }
+}
+
 function getskillshtml(champion, skills) {
     var table = '<table class="skills">';
 
@@ -551,6 +578,9 @@ function loadset(sethash, href) {
         if (set.skillorder != undefined) {
             var skillorder = getskillshtml(champion, set.skillorder);
             setviewerdiv.append(skillorder);
+
+            //Resize the table based on the parent
+            updateSkillsTable();
         }
 
         //Add the spells buttons
