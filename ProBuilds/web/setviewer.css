@@ -503,8 +503,8 @@ table.skills td.level
 
 table.skills img.spell
 {
-    width:16px;
-    height:16px;
+    width: 100%;
+    /* height:16px; */
 }
 
 .ui-tooltip, .ui-tooltip-content {
