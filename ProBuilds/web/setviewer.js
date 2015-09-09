@@ -548,8 +548,10 @@ function loadset(sethash, href) {
         setviewerdiv.append(title);
 
         // Create skill order
-        var skillorder = getskillshtml(champion, set.skillorder);
-        setviewerdiv.append(skillorder);
+        if (set.skillorder != undefined) {
+            var skillorder = getskillshtml(champion, set.skillorder);
+            setviewerdiv.append(skillorder);
+        }
 
         //Add the spells buttons
         var showspells = {};
