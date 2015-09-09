@@ -183,12 +183,12 @@ $(document).ready(function () {
         var filter = $(this).val(),
             count = 0;
 
-        var searchfilter = new RegExp(filter, "i");
+        var searchfilter = new RegExp(filter.replace(/\s/g, ''), "i");
 
         //Loop through each set and show or hide it based on our search
         $("#sets a").each(function () {
-            var name = $(this).attr('data-name');
-            var text = $(this).text();
+            var name = $(this).attr('data-name').replace(/\s/g,'');
+            var text = $(this).text().replace(/\s/g,'');
             var length = name.length > 0;
 
             if (length && name.search(searchfilter) < 0 && text.search(searchfilter) < 0) {
