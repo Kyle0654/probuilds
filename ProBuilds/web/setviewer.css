@@ -350,6 +350,7 @@ article.tabs section h2
     flex-direction:row;
     flex-wrap:nowrap;
     justify-content:flex-start;
+    min-height: 20px;
 }
 
 #setsfilter {
